@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Reveal - No-Flash Edition</title>
+    <style>
+:root {
+            --bg: #000000;
+            --text: #ffffff;
+            --primary: #4f46e5;
+            --success: #059669;
+            --border: #333333;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        #setup-area { display: flex; border: 1px solid var(--border); padding: 40px; border-radius: 20px; background: #080808; }
+        input[type="text"], input[type="file"] {
+            background: #111;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            width: 80%;
+        }
+
+        .instruction-container { text-align: center; margin: 25px 0; }
+        .instruction-list {text-align: left; display: inline-block; margin: 25px 0;font-size: 1.2rem;line-height: 1.8; }
+        b { color: var(--text); font-weight: 800; }
+
+        #answerDisplay { font-size: 3rem; font-weight: 900; margin-bottom: 10px; height: 3.8rem; text-transform: capitalize; visibility: hidden; }
+        
+        /* Fixed-size container for the images */
+        .image-box {
+            width: 100%;
+            height: 55vh;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            position: relative; /* Necessary for layering */
+        }
+
+        /* All game images share these properties */
+        .game-img { 
+            position: absolute;
+            max-width: 100%; 
+            max-height: 100%; 
+            transition: filter 0.7s ease-in-out, opacity 0.4s ease-in;
+            opacity: 0;
+        }
+
+        .ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 600; }
+        .controls { margin-top: 30px; display: flex; gap: 20px; }
+        
+        button { padding: 16px 45px; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+        /* Home link (added for GitHub Pages site navigation) */
+        .home-link{
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 9999;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(8,8,8,0.85);
+            backdrop-filter: blur(6px);
+        }
+        .home-link:hover{ filter: brightness(1.2); transform: translateY(-1px); }
+
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← Home</a>
+
+
+    <div id="setup-area" class="screen" style="display:flex;">
+        <h1 style="margin-top:0;">Activity Setup</h1>
+        <p>Enter the Quiz Topic</p>
+        <input type="text" id="topicInput" placeholder="e.g. Movie Quiz">
+        <p>Select Images</p>
+        <input type="file" id="imageInput" multiple accept="image/*">
+        <br>
+        <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
+    </div>
+
+    <div id="cover-page" class="screen">
+        <h1 id="displayTopic" style="font-size: 4rem; margin-bottom: 0;">QUIZ TOPIC</h1>
+        <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
+        <div class="instruction-container">
+            <ul class="instruction-list">
+                <li>A highly blurred image will be displayed at first</li>
+                <li>Use the <b>Chat</b> or <b>Audio</b> to guess what the image is</li>
+                <li>Each click reveals more detail (4 stages total)</li>
+                <li>The final click reveals the clear image and the answer</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <button class="btn-success" onclick="startGame()">Start Session →</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="screen">
+        <div id="answerDisplay">The Answer</div>
+        <div class="ui-top">
+            <span id="imgCounter">Challenge 1</span>
+            <span style="border: 1px solid white; padding: 4px 15px; border-radius: 20px;" id="blurLabel">Blur: 100%</span>
+        </div>
+        <div class="image-box" id="imageBox">
+            </div>
+        <div class="controls">
+            <button id="revealBtn" class="btn-primary" onclick="stepReveal()">Reveal Next Step</button>
+            <button id="nextBtn" class="btn-success" onclick="nextImg()" style="display:none;">Next Image →</button>
+        </div>
+    </div>
+
+    <script>
+        let fileObjs = [];
+        let curIdx = 0;
+        let curStep = 0;
+        const blurValues = [32, 16, 12, 4, 0]; 
+        const labelValues = ["40%", "20%", "15%", "5%", "0%"];
+
+        function showCoverPage() {
+            const input = document.getElementById('imageInput');
+            const topic = document.getElementById('topicInput').value;
+            if (input.files.length === 0) return alert("Please select images.");
+            fileObjs = Array.from(input.files);
+            document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
+            document.getElementById('setup-area').style.display = 'none';
+            document.getElementById('cover-page').style.display = 'flex';
+        }
+
+        function startGame() {
+            document.getElementById('cover-page').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            loadLevel();
+        }
+
+        function loadLevel() {
+            curStep = 0;
+            const file = fileObjs[curIdx];
+            const imageBox = document.getElementById('imageBox');
+            const ans = document.getElementById('answerDisplay');
+
+            // 1. Clean up the previous image if it exists
+            imageBox.innerHTML = '';
+            
+            // 2. Create the new image element
+            const newImg = document.createElement('img');
+            newImg.id = "activeImg";
+            newImg.className = "game-img";
+            
+            // 3. APPLY BLUR BEFORE SETTING SOURCE
+            newImg.style.filter = `blur(${blurValues[0]}px)`;
+            newImg.src = URL.createObjectURL(file);
+            
+            // 4. Update Answer Text (Hidden)
+            let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+            ans.innerText = name;
+            ans.style.visibility = 'hidden';
+
+            // 5. WAIT FOR BROWSER TO DECODE IMAGE
+            newImg.onload = () => {
+                // Double check to ensure filter is applied
+                newImg.style.filter = `blur(${blurValues[0]}px)`;
+                // Small timeout to ensure the rendering engine has caught up
+                setTimeout(() => {
+                    newImg.style.opacity = "1";
+                }, 50);
+            };
+
+            imageBox.appendChild(newImg);
+            
+            updateUI();
+            document.getElementById('revealBtn').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+
+        function updateUI() {
+            document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
+            document.getElementById('blurLabel').innerText = `Blur: ${labelValues[curStep]}`;
+        }
+
+        function stepReveal() {
+            const activeImg = document.getElementById('activeImg');
+            if (curStep < blurValues.length - 1) {
+                curStep++;
+                activeImg.style.filter = `blur(${blurValues[curStep]}px)`;
+                updateUI();
+                if (curStep === blurValues.length - 1) {
+                    document.getElementById('answerDisplay').style.visibility = 'visible';
+                    document.getElementById('revealBtn').style.display = 'none';
+                    document.getElementById('nextBtn').style.display = 'block';
+                }
+            }
+        }
+
+        function nextImg() {
+            if (curIdx < fileObjs.length - 1) {
+                curIdx++;
+                loadLevel();
+            } else {
+                alert("Quiz Complete! Great job team.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

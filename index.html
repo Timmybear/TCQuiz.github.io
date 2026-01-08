@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiz Arcade</title>
+  <style>
+    :root{
+      --bg:#000;
+      --text:#fff;
+      --border:#333;
+      --card:#080808;
+      --primary:#4f46e5;
+      --success:#059669;
+    }
+    body{
+      margin:0;
+      font-family: Inter, -apple-system, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px 16px;
+    }
+    .wrap{
+      width: 100%;
+      max-width: 980px;
+    }
+    h1{
+      margin:0 0 8px 0;
+      font-size: 3rem;
+      letter-spacing: .5px;
+    }
+    .sub{
+      margin:0 0 28px 0;
+      opacity:.75;
+      line-height:1.6;
+      max-width: 70ch;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap:16px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height: 170px;
+    }
+    .title{
+      font-size:1.3rem;
+      font-weight:800;
+      margin:0;
+    }
+    .desc{
+      margin:0;
+      opacity:.75;
+      line-height:1.5;
+      flex:1;
+    }
+    .pill{
+      display:inline-block;
+      font-size:.85rem;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      opacity:.85;
+      width: fit-content;
+    }
+    .btnrow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+    a.btn{
+      text-decoration:none;
+      color:var(--text);
+      font-weight:800;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      display:inline-block;
+      transition: transform .15s ease, filter .15s ease;
+    }
+    a.btn.primary{ background: var(--primary); border-color: transparent; }
+    a.btn:hover{ transform: translateY(-2px); filter: brightness(1.15); }
+    .note{
+      margin-top: 22px;
+      border:1px solid var(--border);
+      background: #060606;
+      border-radius: 18px;
+      padding: 16px 18px;
+      opacity:.9;
+      line-height:1.6;
+    }
+    code{ background:#111; padding:2px 6px; border-radius:6px; border:1px solid #222; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Quiz Arcade</h1>
+    <p class="sub">
+      Pick a game. Everything runs in your browser — when a game asks you to upload images or audio, those files stay on your computer (nothing is uploaded to GitHub).
+    </p>
+
+    <section class="grid">
+      <article class="card">
+        <div class="pill">Upload images</div>
+        <h2 class="title">Pixel Reveal</h2>
+        <p class="desc">Show a blurred image and reveal it step-by-step. Great for movie or “guess the thing” rounds.</p>
+        <div class="btnrow">
+          <a class="btn primary" href="pixel-reveal.html">Open</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="pill">Upload audio</div>
+        <h2 class="title">Music Intro</h2>
+        <p class="desc">Play the first 5 seconds, then 10 more, then the rest. The answer is the file name.</p>
+        <div class="btnrow">
+          <a class="btn primary" href="music-intro.html">Open</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="pill">Paste emoji + answers</div>
+        <h2 class="title">Emoji Decoder</h2>
+        <p class="desc">Show a set of emojis. Reveal the answer, then jump to the next challenge.</p>
+        <div class="btnrow">
+          <a class="btn primary" href="emoji-decoder.html">Open</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="pill">Paste story template</div>
+        <h2 class="title">Office Mad‑Lib</h2>
+        <p class="desc">Collect words from the team, then reveal the final story with highlighted inserts.</p>
+        <div class="btnrow">
+          <a class="btn primary" href="office-mad-lib.html">Open</a>
+        </div>
+      </article>
+    </section>
+
+    <div class="note">
+      <b>Tip:</b> After you publish on GitHub Pages, your landing page will be:
+      <br />
+      <code>https://&lt;your-username&gt;.github.io/&lt;your-repo&gt;/</code>
+    </div>
+  </main>
+</body>
+</html>

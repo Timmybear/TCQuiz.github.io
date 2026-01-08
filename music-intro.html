@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Intro Challenge - Fade Edition</title>
+    <style>
+:root {
+            --bg: #000000;
+            --text: #ffffff;
+            --primary: #4f46e5;
+            --success: #059669;
+            --secondary: #334155;
+            --border: #333333;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 800px;
+            text-align: center;
+        }
+
+        /* SETUP AREA */
+        #setup-area { display: flex; border: 1px solid var(--border); padding: 40px; border-radius: 20px; background: #080808; }
+        input[type="text"], input[type="file"] {
+            background: #111;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            width: 80%;
+        }
+
+        /* COVER PAGE */
+        .instruction-container { text-align: left; display: inline-block; margin: 25px 0; }
+        .instruction-list {
+            list-style: disc;
+            padding-left: 20px;
+            margin: 0;
+            font-size: 1.3rem;
+            line-height: 2;
+        }
+        b { color: var(--text); font-weight: 800; }
+
+        /* GAME AREA */
+        #answerDisplay {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            height: 3.5rem;
+            text-transform: capitalize;
+            visibility: hidden;
+        }
+
+        .ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 600; opacity: 0.6; }
+        
+        #visualizer {
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 30px 0;
+        }
+        .bar { width: 12px; height: 20px; background: var(--primary); border-radius: 6px; transition: height 0.2s ease; }
+
+        .controls { margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        
+        button {
+            padding: 16px 30px;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-play { background: var(--secondary); color: white; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+        /* Home link (added for GitHub Pages site navigation) */
+        .home-link{
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 9999;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(8,8,8,0.85);
+            backdrop-filter: blur(6px);
+        }
+        .home-link:hover{ filter: brightness(1.2); transform: translateY(-1px); }
+
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← Home</a>
+
+
+    <div id="setup-area" class="screen" style="display:flex;">
+        <h1 style="margin-top:0;">Audio Quiz Setup</h1>
+        <p>Step 1: Quiz Topic (e.g. 90s Pop Hits)</p>
+        <input type="text" id="topicInput" placeholder="Enter topic here...">
+        <p>Step 2: Select MP3 Files (Rename files to the answer!)</p>
+        <input type="file" id="audioInput" multiple accept="audio/*">
+        <br>
+        <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
+    </div>
+
+    <div id="cover-page" class="screen">
+        <h1 id="displayTopic" style="font-size: 4rem; margin-bottom: 0;">QUIZ TOPIC</h1>
+        <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
+        <div class="instruction-container">
+            <ul class="instruction-list">
+                <li>I will play the first <b>5s</b> of a song</li>
+                <li>If needed, I can continue for another <b>10s</b></li>
+                <li>As a last resort, I can play the <b>remaining</b> audio</li>
+                <li>Use <b>Chat</b> or <b>Audio</b> to shout out the answer</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <button class="btn-success" onclick="startGame()">Start Audio Challenge →</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="screen">
+        <div id="answerDisplay">Reveal Answer</div>
+        <div class="ui-top">
+            <span id="imgCounter">Track 1</span>
+        </div>
+        
+        <div id="visualizer">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            <div class="bar"></div><div class="bar"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-play" onclick="playStart(5)">Play First 5s</button>
+            <button class="btn-play" onclick="playMore(10)">+ Continue 10s</button>
+            <button class="btn-play" onclick="playFull()">Play Remaining</button>
+            <button id="revealBtn" class="btn-primary" onclick="revealAnswer()">Reveal Answer</button>
+            <button id="nextBtn" class="btn-success" onclick="nextTrack()" style="display:none;">Next Track →</button>
+        </div>
+    </div>
+
+    <script>
+        let audioFiles = [];
+        let curIdx = 0;
+        let audioPlayer = new Audio();
+        let currentTimeout;
+        let fadeInterval;
+
+        function showCoverPage() {
+            const input = document.getElementById('audioInput');
+            const topic = document.getElementById('topicInput').value;
+            if (input.files.length === 0) return alert("Please select audio files.");
+            audioFiles = Array.from(input.files);
+            document.getElementById('displayTopic').innerText = topic || "Audio Challenge";
+            document.getElementById('setup-area').style.display = 'none';
+            document.getElementById('cover-page').style.display = 'flex';
+        }
+
+        function startGame() {
+            document.getElementById('cover-page').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            loadTrack();
+        }
+
+        function loadTrack() {
+            stopAudioImmediate();
+            const file = audioFiles[curIdx];
+            audioPlayer.src = URL.createObjectURL(file);
+            audioPlayer.volume = 1; // Reset volume for new track
+            
+            let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+            document.getElementById('answerDisplay').innerText = name;
+            document.getElementById('answerDisplay').style.visibility = 'hidden';
+            document.getElementById('imgCounter').innerText = `Track ${curIdx + 1} of ${audioFiles.length}`;
+            document.getElementById('revealBtn').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+
+        function playStart(s) {
+            stopAudioImmediate();
+            audioPlayer.currentTime = 0;
+            startPlayback(s);
+        }
+
+        function playMore(s) {
+            stopAudioImmediate();
+            startPlayback(s);
+        }
+
+        function playFull() {
+            stopAudioImmediate();
+            toggleVisualizer(true);
+            audioPlayer.play();
+            audioPlayer.onended = () => toggleVisualizer(false);
+        }
+
+        function startPlayback(s) {
+            audioPlayer.volume = 1; 
+            toggleVisualizer(true);
+            audioPlayer.play();
+            currentTimeout = setTimeout(() => {
+                audioPlayer.pause();
+                toggleVisualizer(false);
+            }, s * 1000);
+        }
+
+        function stopAudioImmediate() {
+            clearTimeout(currentTimeout);
+            clearInterval(fadeInterval);
+            audioPlayer.pause();
+            toggleVisualizer(false);
+        }
+
+        function revealAnswer() {
+            // Show the answer
+            document.getElementById('answerDisplay').style.visibility = 'visible';
+            document.getElementById('revealBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
+
+            // Begin 3s Fade Out
+            const fadeDuration = 3000; // 3 seconds
+            const interval = 50; // Update every 50ms
+            const volumeStep = audioPlayer.volume / (fadeDuration / interval);
+
+            fadeInterval = setInterval(() => {
+                if (audioPlayer.volume > volumeStep) {
+                    audioPlayer.volume -= volumeStep;
+                } else {
+                    audioPlayer.volume = 0;
+                    audioPlayer.pause();
+                    toggleVisualizer(false);
+                    clearInterval(fadeInterval);
+                }
+            }, interval);
+        }
+
+        function toggleVisualizer(active) {
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach((b) => {
+                b.style.height = active ? (Math.random() * 80 + 20) + 'px' : '20px';
+            });
+        }
+
+        function nextTrack() {
+            if (curIdx < audioFiles.length - 1) {
+                curIdx++;
+                loadTrack();
+            } else {
+                alert("Quiz Complete! Great job team.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

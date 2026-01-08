@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Decoder - Final Layout</title>
+    <style>
+:root {
+            --bg: #000000;
+            --text: #ffffff;
+            --primary: #4f46e5;
+            --success: #059669;
+            --border: #333333;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        /* SETUP AREA */
+        #setup-area { display: flex; border: 1px solid var(--border); padding: 40px; border-radius: 20px; background: #080808; }
+        input[type="text"], textarea {
+            background: #111;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            width: 90%;
+        }
+        textarea { height: 120px; font-family: monospace; }
+
+        /* COVER PAGE */
+        .instruction-container { text-align: left; display: inline-block; margin: 25px 0; }
+        .instruction-list {
+            list-style: disc;
+            padding-left: 20px;
+            margin: 0;
+            font-size: 1.3rem;
+            line-height: 2;
+        }
+        b { color: var(--text); font-weight: 800; }
+
+        /* GAME AREA - REORDERED LAYOUT */
+        .ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 600; opacity: 0.6; }
+        
+        #emojiDisplay {
+            font-size: 8rem; /* Made slightly larger for impact */
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+            transition: opacity 0.3s ease;
+        }
+
+        #answerDisplay {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 40px; /* Space above buttons */
+            height: 4rem;
+            text-transform: uppercase;
+            visibility: hidden;
+            color: var(--text);
+        }
+
+        .controls { display: flex; gap: 20px; }
+        
+        button {
+            padding: 16px 45px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+        /* Home link (added for GitHub Pages site navigation) */
+        .home-link{
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 9999;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(8,8,8,0.85);
+            backdrop-filter: blur(6px);
+        }
+        .home-link:hover{ filter: brightness(1.2); transform: translateY(-1px); }
+
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← Home</a>
+
+
+    <div id="setup-area" class="screen" style="display:flex;">
+        <h1 style="margin-top:0;">Emoji Decoder Setup</h1>
+        <p>Step 1: Enter Topic</p>
+        <input type="text" id="topicInput" placeholder="e.g. Office Phrase Quiz">
+        <p>Step 2: Enter Pairs (Emoji, Answer)</p>
+        <textarea id="dataInput">🤝⚾️📍, Touching Base
+🤿🌊🔍, Deep Dive
+📅🔥😱, Tight Deadline
+🥪🗣️, Lunch and Learn</textarea>
+        <br>
+        <button class="btn-primary" onclick="showCoverPage()">Create Quiz Cover</button>
+    </div>
+
+    <div id="cover-page" class="screen">
+        <h1 id="displayTopic" style="font-size: 4rem; margin-bottom: 0;">TOPIC</h1>
+        <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
+        <div class="instruction-container">
+            <ul class="instruction-list">
+                <li>A set of emojis will appear on the screen</li>
+                <li>Use <b>Chat</b> or <b>Audio</b> to shout out the answer</li>
+                <li>The first person to get it right wins the round</li>
+                <li>The final click reveals the answer and moves to next</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <button class="btn-success" onclick="startGame()">Start Session →</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="screen">
+        <div class="ui-top">
+            <span id="imgCounter">Challenge 1</span>
+        </div>
+        
+        <div id="emojiDisplay">❓❓❓</div>
+        <div id="answerDisplay">ANSWER</div>
+
+        <div class="controls">
+            <button id="revealBtn" class="btn-primary" onclick="revealAnswer()">Reveal Answer</button>
+            <button id="nextBtn" class="btn-success" onclick="nextChallenge()" style="display:none;">Next Challenge →</button>
+        </div>
+    </div>
+
+    <script>
+        let challenges = [];
+        let curIdx = 0;
+
+        function showCoverPage() {
+            const data = document.getElementById('dataInput').value;
+            const topic = document.getElementById('topicInput').value;
+            
+            challenges = data.split('\n').filter(line => line.includes(',')).map(line => {
+                const parts = line.split(',');
+                return { 
+                    emoji: parts[0].trim(), 
+                    ans: parts.slice(1).join(',').trim() 
+                };
+            });
+
+            if (challenges.length === 0) return alert("Please enter some pairs!");
+            document.getElementById('displayTopic').innerText = topic || "Emoji Decoder";
+            document.getElementById('setup-area').style.display = 'none';
+            document.getElementById('cover-page').style.display = 'flex';
+        }
+
+        function startGame() {
+            document.getElementById('cover-page').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            loadLevel();
+        }
+
+        function loadLevel() {
+            const current = challenges[curIdx];
+            const display = document.getElementById('emojiDisplay');
+            
+            display.style.opacity = "0";
+            
+            setTimeout(() => {
+                display.innerText = current.emoji;
+                document.getElementById('answerDisplay').innerText = current.ans;
+                document.getElementById('answerDisplay').style.visibility = 'hidden';
+                document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${challenges.length}`;
+                display.style.opacity = "1";
+            }, 200);
+
+            document.getElementById('revealBtn').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+
+        function revealAnswer() {
+            document.getElementById('answerDisplay').style.visibility = 'visible';
+            document.getElementById('revealBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
+        }
+
+        function nextChallenge() {
+            if (curIdx < challenges.length - 1) {
+                curIdx++;
+                loadLevel();
+            } else {
+                alert("Quiz Complete! Great job team.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
