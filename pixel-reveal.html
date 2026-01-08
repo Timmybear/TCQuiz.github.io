@@ -74,7 +74,16 @@
             opacity: 0;
         }
 
-        .ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 600; }
+        
+/* Canvas version of the reveal image (keeps everything in one layer) */
+.game-canvas {
+    position: absolute;
+    max-width: 100%;
+    max-height: 100%;
+    transition: opacity 0.4s ease-in;
+    opacity: 0;
+}
+.ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 600; }
         .controls { margin-top: 30px; display: flex; gap: 20px; }
         
         button { padding: 16px 45px; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
@@ -147,96 +156,186 @@
     </div>
 
     <script>
-        let fileObjs = [];
-        let curIdx = 0;
-        let curStep = 0;
-        const blurValues = [32, 16, 12, 4, 0]; 
-        const labelValues = ["40%", "20%", "15%", "5%", "0%"];
+let fileObjs = [];
+let curIdx = 0;
+let curStep = 0;
 
-        function showCoverPage() {
-            const input = document.getElementById('imageInput');
-            const topic = document.getElementById('topicInput').value;
-            if (input.files.length === 0) return alert("Please select images.");
-            fileObjs = Array.from(input.files);
-            document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
-            document.getElementById('setup-area').style.display = 'none';
-            document.getElementById('cover-page').style.display = 'flex';
+// 4-stage reveal:
+// Stage 1: 15% blur (full image)
+// Stage 2: keep 15% blur + reveal 20% of image clear
+// Stage 3: reveal 30% clear + reduce remaining blur to 5%
+// Stage 4: full reveal + show title (answer)
+const STAGES = [
+    { blurPx: 12, revealPct: 0.00, label: "Stage 1: 15% blur" },
+    { blurPx: 12, revealPct: 0.20, label: "Stage 2: 15% blur + 20% clear" },
+    { blurPx: 4,  revealPct: 0.30, label: "Stage 3: 5% blur + 30% clear" },
+    { blurPx: 0,  revealPct: 1.00, label: "Stage 4: Full reveal" }
+];
+
+// Canvas state
+let activeImgObj = null;
+let activeCanvas = null;
+let activeCtx = null;
+let gridCells = [];
+let revealOrder = [];
+
+function showCoverPage() {
+    const input = document.getElementById('imageInput');
+    const topic = document.getElementById('topicInput').value;
+    if (input.files.length === 0) return alert("Please select images.");
+    fileObjs = Array.from(input.files);
+    document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
+    document.getElementById('setup-area').style.display = 'none';
+    document.getElementById('cover-page').style.display = 'flex';
+}
+
+function startGame() {
+    document.getElementById('cover-page').style.display = 'none';
+    document.getElementById('game-container').style.display = 'flex';
+    loadLevel();
+}
+
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function buildGrid(width, height) {
+    // Keep it lightweight but still "pixel-ish"
+    const baseCols = 22;
+    const cols = baseCols;
+    const rows = Math.max(14, Math.round(baseCols * (height / width)));
+
+    const cellW = width / cols;
+    const cellH = height / rows;
+
+    gridCells = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = Math.round(c * cellW);
+            const y = Math.round(r * cellH);
+            const w = Math.round((c + 1) * cellW) - x;
+            const h = Math.round((r + 1) * cellH) - y;
+            gridCells.push({ x, y, w, h });
         }
+    }
 
-        function startGame() {
-            document.getElementById('cover-page').style.display = 'none';
-            document.getElementById('game-container').style.display = 'flex';
-            loadLevel();
+    revealOrder = shuffleArray([...Array(gridCells.length).keys()]);
+}
+
+function renderStage(stageIdx) {
+    if (!activeCtx || !activeCanvas || !activeImgObj) return;
+
+    const stage = STAGES[stageIdx];
+    const ctx = activeCtx;
+    const cw = activeCanvas.width;
+    const ch = activeCanvas.height;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Stage 4: draw fully clear (fast path)
+    if (stage.blurPx === 0) {
+        ctx.filter = "none";
+        ctx.drawImage(activeImgObj, 0, 0, cw, ch);
+        return;
+    }
+
+    // Base: blurred full image
+    ctx.filter = `blur(${stage.blurPx}px)`;
+    ctx.drawImage(activeImgObj, 0, 0, cw, ch);
+
+    // Overlay: reveal some blocks in full clarity
+    if (stage.revealPct > 0) {
+        const revealCount = Math.max(0, Math.round(stage.revealPct * gridCells.length));
+        ctx.filter = "none";
+        for (let k = 0; k < revealCount; k++) {
+            const cell = gridCells[revealOrder[k]];
+            ctx.drawImage(activeImgObj, cell.x, cell.y, cell.w, cell.h, cell.x, cell.y, cell.w, cell.h);
         }
+    }
+}
 
-        function loadLevel() {
-            curStep = 0;
-            const file = fileObjs[curIdx];
-            const imageBox = document.getElementById('imageBox');
-            const ans = document.getElementById('answerDisplay');
+function loadLevel() {
+    curStep = 0;
+    const file = fileObjs[curIdx];
+    const imageBox = document.getElementById('imageBox');
+    const ans = document.getElementById('answerDisplay');
 
-            // 1. Clean up the previous image if it exists
-            imageBox.innerHTML = '';
-            
-            // 2. Create the new image element
-            const newImg = document.createElement('img');
-            newImg.id = "activeImg";
-            newImg.className = "game-img";
-            
-            // 3. APPLY BLUR BEFORE SETTING SOURCE
-            newImg.style.filter = `blur(${blurValues[0]}px)`;
-            newImg.src = URL.createObjectURL(file);
-            
-            // 4. Update Answer Text (Hidden)
-            let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
-            ans.innerText = name;
-            ans.style.visibility = 'hidden';
+    // Reset UI
+    document.getElementById('revealBtn').style.display = 'block';
+    document.getElementById('nextBtn').style.display = 'none';
 
-            // 5. WAIT FOR BROWSER TO DECODE IMAGE
-            newImg.onload = () => {
-                // Double check to ensure filter is applied
-                newImg.style.filter = `blur(${blurValues[0]}px)`;
-                // Small timeout to ensure the rendering engine has caught up
-                setTimeout(() => {
-                    newImg.style.opacity = "1";
-                }, 50);
-            };
+    // Update Answer Text (Hidden)
+    let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+    ans.innerText = name;
+    ans.style.visibility = 'hidden';
 
-            imageBox.appendChild(newImg);
-            
-            updateUI();
-            document.getElementById('revealBtn').style.display = 'block';
-            document.getElementById('nextBtn').style.display = 'none';
+    // Replace content with a fresh canvas (prevents any flicker)
+    imageBox.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    canvas.id = "revealCanvas";
+    canvas.className = "game-canvas";
+    canvas.style.opacity = "0";
+    imageBox.appendChild(canvas);
+
+    activeCanvas = canvas;
+    activeCtx = canvas.getContext('2d');
+
+    // Load image into an Image() object for canvas drawing
+    const img = new Image();
+    img.onload = () => {
+        // Downscale big photos a bit to keep rendering snappy
+        const maxDim = 1600;
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+
+        activeImgObj = img;
+
+        buildGrid(canvas.width, canvas.height);
+
+        // Draw stage 1 immediately, then fade in the canvas
+        renderStage(curStep);
+        setTimeout(() => { canvas.style.opacity = "1"; }, 50);
+
+        updateUI();
+    };
+    img.src = URL.createObjectURL(file);
+
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
+    document.getElementById('blurLabel').innerText = STAGES[curStep].label;
+}
+
+function stepReveal() {
+    if (curStep < STAGES.length - 1) {
+        curStep++;
+        renderStage(curStep);
+        updateUI();
+
+        if (curStep === STAGES.length - 1) {
+            document.getElementById('answerDisplay').style.visibility = 'visible';
+            document.getElementById('revealBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
         }
+    }
+}
 
-        function updateUI() {
-            document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
-            document.getElementById('blurLabel').innerText = `Blur: ${labelValues[curStep]}`;
-        }
-
-        function stepReveal() {
-            const activeImg = document.getElementById('activeImg');
-            if (curStep < blurValues.length - 1) {
-                curStep++;
-                activeImg.style.filter = `blur(${blurValues[curStep]}px)`;
-                updateUI();
-                if (curStep === blurValues.length - 1) {
-                    document.getElementById('answerDisplay').style.visibility = 'visible';
-                    document.getElementById('revealBtn').style.display = 'none';
-                    document.getElementById('nextBtn').style.display = 'block';
-                }
-            }
-        }
-
-        function nextImg() {
-            if (curIdx < fileObjs.length - 1) {
-                curIdx++;
-                loadLevel();
-            } else {
-                alert("Quiz Complete! Great job team.");
-                location.reload();
-            }
-        }
-    </script>
+function nextImg() {
+    if (curIdx < fileObjs.length - 1) {
+        curIdx++;
+        loadLevel();
+    } else {
+        alert("Quiz Complete! Great job team.");
+        location.reload();
+    }
+}
+</script>
 </body>
 </html>
