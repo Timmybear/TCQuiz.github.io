@@ -1,341 +1,480 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Reveal - No-Flash Edition</title>
-    <style>
-:root {
-            --bg: #000000;
-            --text: #ffffff;
-            --primary: #4f46e5;
-            --success: #059669;
-            --border: #333333;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Reveal - Masked Reveal Edition</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #ffffff;
+      --primary: #4f46e5;
+      --success: #059669;
+      --border: #333333;
+    }
 
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-        }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-        .screen {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            width: 90%;
-            max-width: 900px;
-            text-align: center;
-        }
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 900px;
+      text-align: center;
+    }
 
-        #setup-area { display: flex; border: 1px solid var(--border); padding: 40px; border-radius: 20px; background: #080808; }
-        input[type="text"], input[type="file"] {
-            background: #111;
-            border: 1px solid var(--border);
-            color: white;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
-            width: 80%;
-        }
+    #setup-area {
+      display: flex;
+      border: 1px solid var(--border);
+      padding: 40px;
+      border-radius: 20px;
+      background: #080808;
+    }
 
-        .instruction-container { text-align: center; margin: 25px 0; }
-        .instruction-list {text-align: left; display: inline-block; margin: 25px 0;font-size: 1.2rem;line-height: 1.8; }
-        b { color: var(--text); font-weight: 800; }
+    input[type="text"], input[type="file"] {
+      background: #111;
+      border: 1px solid var(--border);
+      color: white;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      width: 80%;
+    }
 
-        #answerDisplay { font-size: 3rem; font-weight: 900; margin-bottom: 10px; height: 3.8rem; text-transform: capitalize; visibility: hidden; }
-        
-        /* Fixed-size container for the images */
-        .image-box {
-            width: 100%;
-            height: 55vh;
-            background: #000;
-            border-radius: 16px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-            position: relative; /* Necessary for layering */
-        }
+    .instruction-container { text-align: center; margin: 25px 0; }
+    .instruction-list {
+      text-align: left;
+      display: inline-block;
+      margin: 25px 0;
+      font-size: 1.2rem;
+      line-height: 1.8;
+    }
+    b { color: var(--text); font-weight: 800; }
 
-        /* All game images share these properties */
-        .game-img { 
-            position: absolute;
-            max-width: 100%; 
-            max-height: 100%; 
-            transition: filter 0.7s ease-in-out, opacity 0.4s ease-in;
-            opacity: 0;
-        }
+    #answerDisplay {
+      font-size: 3rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      height: 3.8rem;
+      text-transform: capitalize;
+      visibility: hidden;
+    }
 
-        
-/* Canvas version of the reveal image (keeps everything in one layer) */
-.game-canvas {
-    position: absolute;
-    max-width: 100%;
-    max-height: 100%;
-    transition: opacity 0.4s ease-in;
-    opacity: 0;
-}
-.ui-top { width: 100%; display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 600; }
-        .controls { margin-top: 30px; display: flex; gap: 20px; }
-        
-        button { padding: 16px 45px; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+    .image-box {
+      width: 100%;
+      height: 55vh;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      position: relative;
+    }
 
-        /* Home link (added for GitHub Pages site navigation) */
-        .home-link{
-            position: fixed;
-            top: 18px;
-            left: 18px;
-            z-index: 9999;
-            color: var(--text);
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 0.95rem;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: rgba(8,8,8,0.85);
-            backdrop-filter: blur(6px);
-        }
-        .home-link:hover{ filter: brightness(1.2); transform: translateY(-1px); }
+    .reveal-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      opacity: 0;                 /* prevents any flash */
+      transition: opacity 0.25s ease-in;
+    }
 
-    </style>
+    .ui-top {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .controls { margin-top: 30px; display: flex; gap: 20px; }
+
+    button {
+      padding: 16px 45px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+    .home-link{
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 9999;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(8,8,8,0.85);
+      backdrop-filter: blur(6px);
+    }
+    .home-link:hover{ filter: brightness(1.2); transform: translateY(-1px); }
+  </style>
 </head>
+
 <body>
-    <a class="home-link" href="index.html">← Home</a>
+  <a class="home-link" href="index.html">← Home</a>
 
+  <div id="setup-area" class="screen" style="display:flex;">
+    <h1 style="margin-top:0;">Activity Setup</h1>
+    <p>Enter the Quiz Topic</p>
+    <input type="text" id="topicInput" placeholder="e.g. Movie Quiz" />
+    <p>Select Images</p>
+    <input type="file" id="imageInput" multiple accept="image/*" />
+    <br />
+    <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
+  </div>
 
-    <div id="setup-area" class="screen" style="display:flex;">
-        <h1 style="margin-top:0;">Activity Setup</h1>
-        <p>Enter the Quiz Topic</p>
-        <input type="text" id="topicInput" placeholder="e.g. Movie Quiz">
-        <p>Select Images</p>
-        <input type="file" id="imageInput" multiple accept="image/*">
-        <br>
-        <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
+  <div id="cover-page" class="screen">
+    <h1 id="displayTopic" style="font-size: 4rem; margin-bottom: 0;">QUIZ TOPIC</h1>
+    <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
+    <div class="instruction-container">
+      <ul class="instruction-list">
+          <li>A highly blurred image will be displayed at first</li>
+          <li>Use the <b>Chat</b> or <b>Audio</b> to guess what the image is</li>
+          <li>Each click reveals more detail (4 stages total)</li>
+          <li>The final click reveals the clear image and the answer</li>
+      </ul>
+    </div>
+    <div class="controls">
+      <button class="btn-success" onclick="startGame()">Start Session →</button>
+    </div>
+  </div>
+
+  <div id="game-container" class="screen">
+    <div id="answerDisplay">The Answer</div>
+
+    <div class="ui-top">
+      <span id="imgCounter">Challenge 1</span>
+      <span style="border: 1px solid white; padding: 4px 15px; border-radius: 20px;" id="blurLabel">Blur: 15%</span>
     </div>
 
-    <div id="cover-page" class="screen">
-        <h1 id="displayTopic" style="font-size: 4rem; margin-bottom: 0;">QUIZ TOPIC</h1>
-        <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
-        <div class="instruction-container">
-            <ul class="instruction-list">
-                <li>A highly blurred image will be displayed at first</li>
-                <li>Use the <b>Chat</b> or <b>Audio</b> to guess what the image is</li>
-                <li>Each click reveals more detail (4 stages total)</li>
-                <li>The final click reveals the clear image and the answer</li>
-            </ul>
-        </div>
-        <div class="controls">
-            <button class="btn-success" onclick="startGame()">Start Session →</button>
-        </div>
+    <div class="image-box" id="imageBox"></div>
+
+    <div class="controls">
+      <button id="revealBtn" class="btn-primary" onclick="stepReveal()">Reveal Next Step</button>
+      <button id="nextBtn" class="btn-success" onclick="nextImg()" style="display:none;">Next Image →</button>
     </div>
+  </div>
 
-    <div id="game-container" class="screen">
-        <div id="answerDisplay">The Answer</div>
-        <div class="ui-top">
-            <span id="imgCounter">Challenge 1</span>
-            <span style="border: 1px solid white; padding: 4px 15px; border-radius: 20px;" id="blurLabel">Blur: 100%</span>
-        </div>
-        <div class="image-box" id="imageBox">
-            </div>
-        <div class="controls">
-            <button id="revealBtn" class="btn-primary" onclick="stepReveal()">Reveal Next Step</button>
-            <button id="nextBtn" class="btn-success" onclick="nextImg()" style="display:none;">Next Image →</button>
-        </div>
-    </div>
+  <script>
+    // -------------------------
+    // Game state
+    // -------------------------
+    let fileObjs = [];
+    let curIdx = 0;
+    let curStep = 0;
+    let curObjectUrl = null;
 
-    <script>
-let fileObjs = [];
-let curIdx = 0;
-let curStep = 0;
+    // Reveal design
+    const GRID = 10; // 10x10 => 100 blocks
+    const TOTAL_BLOCKS = GRID * GRID;
 
-// 4-stage reveal:
-// Stage 1: 15% blur (full image)
-// Stage 2: keep 15% blur + reveal 20% of image clear
-// Stage 3: reveal 30% clear + reduce remaining blur to 5%
-// Stage 4: full reveal + show title (answer)
-const STAGES = [
-    { blurPx: 12, revealPct: 0.00, label: "Stage 1: 15% blur" },
-    { blurPx: 12, revealPct: 0.20, label: "Stage 2: 15% blur + 20% clear" },
-    { blurPx: 4,  revealPct: 0.30, label: "Stage 3: 5% blur + 30% clear" },
-    { blurPx: 0,  revealPct: 1.00, label: "Stage 4: Full reveal" }
-];
+    // ✅ Keep your stage %s; blur strength will be derived using your original px logic
+    const STAGES = [
+      { blurPercent: 15, revealCount: 0,   showAnswer: false }, // Stage 1
+      { blurPercent: 15, revealCount: 20,  showAnswer: false }, // Stage 2
+      { blurPercent: 10, revealCount: 30,  showAnswer: false }, // Stage 3
+      { blurPercent: 0,  revealCount: 100, showAnswer: true  }  // Stage 4
+    ];
 
-// Canvas state
-let activeImgObj = null;
-let activeCanvas = null;
-let activeCtx = null;
-let gridCells = [];
-let revealOrder = [];
+    let tileOrder = []; // shuffled block indices per image
 
-function showCoverPage() {
-    const input = document.getElementById('imageInput');
-    const topic = document.getElementById('topicInput').value;
-    if (input.files.length === 0) return alert("Please select images.");
-    fileObjs = Array.from(input.files);
-    document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
-    document.getElementById('setup-area').style.display = 'none';
-    document.getElementById('cover-page').style.display = 'flex';
-}
+    // -------------------------
+    // UI flow
+    // -------------------------
+    function showCoverPage() {
+      const input = document.getElementById('imageInput');
+      const topic = document.getElementById('topicInput').value;
+      if (input.files.length === 0) return alert("Please select images.");
 
-function startGame() {
-    document.getElementById('cover-page').style.display = 'none';
-    document.getElementById('game-container').style.display = 'flex';
-    loadLevel();
-}
+      fileObjs = Array.from(input.files);
+      curIdx = 0;
 
-function shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+      document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
+      document.getElementById('setup-area').style.display = 'none';
+      document.getElementById('cover-page').style.display = 'flex';
+    }
+
+    function startGame() {
+      document.getElementById('cover-page').style.display = 'none';
+      document.getElementById('game-container').style.display = 'flex';
+      loadLevel();
+    }
+
+    // -------------------------
+    // ✅ Blur logic aligned to your original file
+    // Original feel: 15% ≈ 12px, 5% ≈ 4px, 0% = 0px (linear mapping)
+    // -------------------------
+    function percentToBlurPx(pct) {
+      // 15% -> 12px, so px = pct * (12/15) = pct * 0.8
+      return Math.max(0, pct * 0.8);
+    }
+
+    // Ensure filter region is large enough so blur doesn't get clipped at edges
+    function setFilterRegion(filterEl, w, h, blurPx) {
+      const pad = Math.max(40, blurPx * 6);
+      filterEl.setAttribute("filterUnits", "userSpaceOnUse");
+      filterEl.setAttribute("x", String(-pad));
+      filterEl.setAttribute("y", String(-pad));
+      filterEl.setAttribute("width", String(w + pad * 2));
+      filterEl.setAttribute("height", String(h + pad * 2));
+    }
+
+    // -------------------------
+    // Core: build SVG layers (blur + clear with mask)
+    // -------------------------
+    function buildRevealSvg(w, h) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "reveal-svg");
+
+      // ✅ Make SVG units = pixels so blur stdDeviation behaves like CSS px blur
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+      const defs = document.createElementNS(svg.namespaceURI, "defs");
+
+      const filter = document.createElementNS(svg.namespaceURI, "filter");
+      filter.setAttribute("id", "blurFilter");
+
+      const feBlur = document.createElementNS(svg.namespaceURI, "feGaussianBlur");
+      feBlur.setAttribute("id", "blurNode");
+      feBlur.setAttribute("in", "SourceGraphic");
+      feBlur.setAttribute("stdDeviation", "0");
+      feBlur.setAttribute("edgeMode", "duplicate");
+
+      filter.appendChild(feBlur);
+      defs.appendChild(filter);
+
+      const mask = document.createElementNS(svg.namespaceURI, "mask");
+      mask.setAttribute("id", "revealMask");
+
+      const maskBg = document.createElementNS(svg.namespaceURI, "rect");
+      maskBg.setAttribute("id", "maskBg");
+      maskBg.setAttribute("x", "0");
+      maskBg.setAttribute("y", "0");
+      maskBg.setAttribute("width", String(w));
+      maskBg.setAttribute("height", String(h));
+      maskBg.setAttribute("fill", "black");
+
+      const maskGroup = document.createElementNS(svg.namespaceURI, "g");
+      maskGroup.setAttribute("id", "maskRects");
+
+      mask.appendChild(maskBg);
+      mask.appendChild(maskGroup);
+      defs.appendChild(mask);
+
+      svg.appendChild(defs);
+
+      const imgBlur = document.createElementNS(svg.namespaceURI, "image");
+      imgBlur.setAttribute("id", "imgBlur");
+      imgBlur.setAttribute("x", "0");
+      imgBlur.setAttribute("y", "0");
+      imgBlur.setAttribute("width", String(w));
+      imgBlur.setAttribute("height", String(h));
+      imgBlur.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      imgBlur.setAttribute("filter", "url(#blurFilter)");
+
+      const imgClear = document.createElementNS(svg.namespaceURI, "image");
+      imgClear.setAttribute("id", "imgClear");
+      imgClear.setAttribute("x", "0");
+      imgClear.setAttribute("y", "0");
+      imgClear.setAttribute("width", String(w));
+      imgClear.setAttribute("height", String(h));
+      imgClear.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      imgClear.setAttribute("mask", "url(#revealMask)");
+
+      svg.appendChild(imgBlur);
+      svg.appendChild(imgClear);
+
+      return svg;
+    }
+
+    function setSvgImageHref(svg, url) {
+      const blur = svg.querySelector("#imgBlur");
+      const clear = svg.querySelector("#imgClear");
+
+      blur.setAttribute("href", url);
+      clear.setAttribute("href", url);
+
+      blur.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", url);
+      clear.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", url);
+    }
+
+    function applyStage(svg, stepIdx) {
+      const stage = STAGES[stepIdx];
+
+      // ✅ Blur now uses px-strength derived from your original logic
+      const blurPx = percentToBlurPx(stage.blurPercent);
+      const blurNode = svg.querySelector("#blurNode");
+      blurNode.setAttribute("stdDeviation", String(blurPx));
+
+      // Ensure filter region won’t clip the blur
+      const vb = svg.viewBox.baseVal;
+      const filterEl = svg.querySelector("#blurFilter");
+      setFilterRegion(filterEl, vb.width, vb.height, blurPx);
+
+      // Mask rectangles (clear reveals)
+      const maskGroup = svg.querySelector("#maskRects");
+      maskGroup.innerHTML = "";
+
+      const revealCount = Math.min(stage.revealCount, TOTAL_BLOCKS);
+      const cellW = vb.width / GRID;
+      const cellH = vb.height / GRID;
+
+      for (let i = 0; i < revealCount; i++) {
+        const idx = tileOrder[i];
+        const r = Math.floor(idx / GRID);
+        const c = idx % GRID;
+
+        const rect = document.createElementNS(svg.namespaceURI, "rect");
+        rect.setAttribute("x", String(c * cellW));
+        rect.setAttribute("y", String(r * cellH));
+        rect.setAttribute("width", String(cellW));
+        rect.setAttribute("height", String(cellH));
+        rect.setAttribute("fill", "white");
+
+        maskGroup.appendChild(rect);
+      }
+
+      // UI updates
+      document.getElementById('blurLabel').innerText = `Blur: ${stage.blurPercent}%`;
+
+      if (stage.showAnswer) {
+        document.getElementById('answerDisplay').style.visibility = 'visible';
+        document.getElementById('revealBtn').style.display = 'none';
+        document.getElementById('nextBtn').style.display = 'block';
+      } else {
+        document.getElementById('answerDisplay').style.visibility = 'hidden';
+        document.getElementById('revealBtn').style.display = 'block';
+        document.getElementById('nextBtn').style.display = 'none';
+      }
+    }
+
+    // -------------------------
+    // Deterministic shuffle (stable per filename)
+    // -------------------------
+    function hashStringToSeed(str) {
+      let h = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function mulberry32(seed) {
+      return function() {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function makeTileOrder(seedStr) {
+      const seed = hashStringToSeed(seedStr);
+      const rand = mulberry32(seed);
+
+      const arr = Array.from({ length: TOTAL_BLOCKS }, (_, i) => i);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
-function buildGrid(width, height) {
-    // Keep it lightweight but still "pixel-ish"
-    const baseCols = 22;
-    const cols = baseCols;
-    const rows = Math.max(14, Math.round(baseCols * (height / width)));
-
-    const cellW = width / cols;
-    const cellH = height / rows;
-
-    gridCells = [];
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const x = Math.round(c * cellW);
-            const y = Math.round(r * cellH);
-            const w = Math.round((c + 1) * cellW) - x;
-            const h = Math.round((r + 1) * cellH) - y;
-            gridCells.push({ x, y, w, h });
-        }
+      }
+      return arr;
     }
 
-    revealOrder = shuffleArray([...Array(gridCells.length).keys()]);
-}
+    // -------------------------
+    // Level loading
+    // -------------------------
+    function loadLevel() {
+      curStep = 0;
 
-function renderStage(stageIdx) {
-    if (!activeCtx || !activeCanvas || !activeImgObj) return;
+      const file = fileObjs[curIdx];
+      const imageBox = document.getElementById('imageBox');
+      const ans = document.getElementById('answerDisplay');
 
-    const stage = STAGES[stageIdx];
-    const ctx = activeCtx;
-    const cw = activeCanvas.width;
-    const ch = activeCanvas.height;
+      if (curObjectUrl) {
+        URL.revokeObjectURL(curObjectUrl);
+        curObjectUrl = null;
+      }
 
-    ctx.clearRect(0, 0, cw, ch);
+      const name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+      ans.innerText = name;
+      ans.style.visibility = 'hidden';
 
-    // Stage 4: draw fully clear (fast path)
-    if (stage.blurPx === 0) {
-        ctx.filter = "none";
-        ctx.drawImage(activeImgObj, 0, 0, cw, ch);
-        return;
+      document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
+      tileOrder = makeTileOrder(file.name);
+
+      imageBox.innerHTML = '';
+
+      // ✅ Measure the container in pixels and build SVG in pixel-units
+      const rect = imageBox.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height));
+      const svg = buildRevealSvg(w, h);
+      imageBox.appendChild(svg);
+
+      curObjectUrl = URL.createObjectURL(file);
+      const pre = new Image();
+      pre.onload = () => {
+        setSvgImageHref(svg, curObjectUrl);
+
+        // Apply stage 1 before showing
+        applyStage(svg, 0);
+
+        requestAnimationFrame(() => {
+          svg.style.opacity = "1";
+        });
+      };
+      pre.src = curObjectUrl;
+
+      document.getElementById('revealBtn').style.display = 'block';
+      document.getElementById('nextBtn').style.display = 'none';
+      document.getElementById('blurLabel').innerText = `Blur: ${STAGES[0].blurPercent}%`;
     }
 
-    // Base: blurred full image
-    ctx.filter = `blur(${stage.blurPx}px)`;
-    ctx.drawImage(activeImgObj, 0, 0, cw, ch);
+    function stepReveal() {
+      const svg = document.querySelector('#imageBox .reveal-svg');
+      if (!svg) return;
 
-    // Overlay: reveal some blocks in full clarity
-    if (stage.revealPct > 0) {
-        const revealCount = Math.max(0, Math.round(stage.revealPct * gridCells.length));
-        ctx.filter = "none";
-        for (let k = 0; k < revealCount; k++) {
-            const cell = gridCells[revealOrder[k]];
-            ctx.drawImage(activeImgObj, cell.x, cell.y, cell.w, cell.h, cell.x, cell.y, cell.w, cell.h);
-        }
-    }
-}
-
-function loadLevel() {
-    curStep = 0;
-    const file = fileObjs[curIdx];
-    const imageBox = document.getElementById('imageBox');
-    const ans = document.getElementById('answerDisplay');
-
-    // Reset UI
-    document.getElementById('revealBtn').style.display = 'block';
-    document.getElementById('nextBtn').style.display = 'none';
-
-    // Update Answer Text (Hidden)
-    let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
-    ans.innerText = name;
-    ans.style.visibility = 'hidden';
-
-    // Replace content with a fresh canvas (prevents any flicker)
-    imageBox.innerHTML = '';
-    const canvas = document.createElement('canvas');
-    canvas.id = "revealCanvas";
-    canvas.className = "game-canvas";
-    canvas.style.opacity = "0";
-    imageBox.appendChild(canvas);
-
-    activeCanvas = canvas;
-    activeCtx = canvas.getContext('2d');
-
-    // Load image into an Image() object for canvas drawing
-    const img = new Image();
-    img.onload = () => {
-        // Downscale big photos a bit to keep rendering snappy
-        const maxDim = 1600;
-        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
-        canvas.width = Math.round(img.naturalWidth * scale);
-        canvas.height = Math.round(img.naturalHeight * scale);
-
-        activeImgObj = img;
-
-        buildGrid(canvas.width, canvas.height);
-
-        // Draw stage 1 immediately, then fade in the canvas
-        renderStage(curStep);
-        setTimeout(() => { canvas.style.opacity = "1"; }, 50);
-
-        updateUI();
-    };
-    img.src = URL.createObjectURL(file);
-
-    updateUI();
-}
-
-function updateUI() {
-    document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
-    document.getElementById('blurLabel').innerText = STAGES[curStep].label;
-}
-
-function stepReveal() {
-    if (curStep < STAGES.length - 1) {
+      if (curStep < STAGES.length - 1) {
         curStep++;
-        renderStage(curStep);
-        updateUI();
-
-        if (curStep === STAGES.length - 1) {
-            document.getElementById('answerDisplay').style.visibility = 'visible';
-            document.getElementById('revealBtn').style.display = 'none';
-            document.getElementById('nextBtn').style.display = 'block';
-        }
+        applyStage(svg, curStep);
+      }
     }
-}
 
-function nextImg() {
-    if (curIdx < fileObjs.length - 1) {
+    function nextImg() {
+      if (curIdx < fileObjs.length - 1) {
         curIdx++;
         loadLevel();
-    } else {
+      } else {
         alert("Quiz Complete! Great job team.");
         location.reload();
+      }
     }
-}
-</script>
+  </script>
 </body>
 </html>
