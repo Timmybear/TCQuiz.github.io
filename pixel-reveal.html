@@ -40,9 +40,11 @@
       padding: 40px;
       border-radius: 20px;
       background: #080808;
+      flex-direction: column;
+      align-items: center;
     }
 
-    input[type="text"], input[type="file"] {
+    input[type="text"], input[type="file"], select {
       background: #111;
       border: 1px solid var(--border);
       color: white;
@@ -50,6 +52,15 @@
       margin: 10px 0;
       border-radius: 8px;
       width: 80%;
+    }
+
+    .hint {
+      width: 80%;
+      margin: 0 0 10px 0;
+      font-size: 0.95rem;
+      color: #cfcfcf;
+      text-align: left;
+      white-space: pre-wrap;
     }
 
     .instruction-container { text-align: center; margin: 25px 0; }
@@ -88,7 +99,7 @@
       width: 100%;
       height: 100%;
       display: block;
-      opacity: 0;                 /* prevents any flash */
+      opacity: 0;
       transition: opacity 0.25s ease-in;
     }
 
@@ -100,7 +111,7 @@
       font-weight: 600;
     }
 
-    .controls { margin-top: 30px; display: flex; gap: 20px; }
+    .controls { margin-top: 30px; display: flex; gap: 20px; justify-content: center; }
 
     button {
       padding: 16px 45px;
@@ -141,7 +152,16 @@
     <h1 style="margin-top:0;">Activity Setup</h1>
     <p>Enter the Quiz Topic</p>
     <input type="text" id="topicInput" placeholder="e.g. Movie Quiz" />
-    <p>Select Images</p>
+
+    <p>Select Quiz Source</p>
+    <select id="quizSelect">
+      <option value="upload">Upload images (from your device)</option>
+      <option value="pr_quiz1">Pre-loaded quiz 1</option>
+      <option value="pr_quiz2">Pre-loaded quiz 2</option>
+    </select>
+    <div id="quizSourceHint" class="hint"></div>
+
+    <p id="uploadLabel">Select Images</p>
     <input type="file" id="imageInput" multiple accept="image/*" />
     <br />
     <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
@@ -152,10 +172,10 @@
     <h3 style="margin-top: 5px; opacity: 0.7; text-transform: uppercase;">How to play</h3>
     <div class="instruction-container">
       <ul class="instruction-list">
-          <li>A highly blurred image will be displayed at first</li>
-          <li>Use the <b>Chat</b> or <b>Audio</b> to guess what the image is</li>
-          <li>Each click reveals more detail (4 stages total)</li>
-          <li>The final click reveals the clear image and the answer</li>
+        <li>A highly blurred image will be displayed at first</li>
+        <li>Use the <b>Chat</b> or <b>Audio</b> to guess what the image is</li>
+        <li>Each click reveals more detail (4 stages total)</li>
+        <li>The final click reveals the clear image and the answer</li>
       </ul>
     </div>
     <div class="controls">
@@ -189,33 +209,264 @@
     let curObjectUrl = null;
 
     // Reveal design
-    const GRID = 10; // 10x10 => 100 blocks
+    const GRID = 10;
     const TOTAL_BLOCKS = GRID * GRID;
 
-    // ✅ Keep your stage %s; blur strength will be derived using your original px logic
+    // -------------------------
+    // Pre-loaded quiz sets
+    // -------------------------
+    const PRELOADED_QUIZZES = {
+      pr_quiz1: { label: "Pre-loaded quiz 1", basePath: "./quizzes/pixel-reveal/pr_quiz1/" },
+      pr_quiz2: { label: "Pre-loaded quiz 2", basePath: "./quizzes/pixel-reveal/pr_quiz2/" }
+    };
+
+    // ✅ If your GitHub Pages is served from gh-pages branch or /docs, you can hard-set these.
+    // Leave them blank to use auto-detection + fallback attempts.
+    const GITHUB_CONFIG = {
+      owner: "",        // e.g. "Timmybear"  (optional)
+      repo: "",         // e.g. "Timmybear.github.io" or "my-project-repo" (optional)
+      ref: "",          // e.g. "gh-pages" (optional)
+      contentRoot: ""   // e.g. "docs" if Pages source is /docs (optional)
+    };
+
+    function uniq(arr) {
+      const out = [];
+      for (const v of arr) if (v && !out.includes(v)) out.push(v);
+      return out;
+    }
+
+    function encodePathSegments(path) {
+      return String(path || "")
+        .split("/")
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join("/");
+    }
+
+    function inferGithubRepoFromLocation() {
+      const host = window.location.hostname || "";
+      if (!host.endsWith("github.io")) return null;
+
+      const owner = host.split(".")[0] || "";
+      const seg = (window.location.pathname || "").split("/").filter(Boolean);
+
+      // Project pages: https://<owner>.github.io/<repo>/
+      // User pages:    https://<owner>.github.io/  (repo is <owner>.github.io)
+      const repo = seg.length > 0 ? seg[0] : `${owner}.github.io`;
+
+      if (!owner || !repo) return null;
+      return { owner, repo };
+    }
+
+    async function fetchRepoDefaultBranch(owner, repo) {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+          headers: { "Accept": "application/vnd.github+json" }
+        });
+        if (!res.ok) return "";
+        const data = await res.json();
+        return data && data.default_branch ? String(data.default_branch) : "";
+      } catch {
+        return "";
+      }
+    }
+
+    // Try listing contents with different (ref, root) combos to avoid 404 due to Pages source settings.
+    async function listGithubDirSmart(dirPathInRepo) {
+      const inferred = inferGithubRepoFromLocation();
+      const owner = (GITHUB_CONFIG.owner || (inferred && inferred.owner) || "").trim();
+      const repo  = (GITHUB_CONFIG.repo  || (inferred && inferred.repo)  || "").trim();
+
+      if (!owner || !repo) {
+        throw new Error(
+          "Could not infer GitHub owner/repo.\n\n" +
+          "Fix: set GITHUB_CONFIG.owner and GITHUB_CONFIG.repo in the code."
+        );
+      }
+
+      const defaultBranch = await fetchRepoDefaultBranch(owner, repo);
+
+      const refs = uniq([
+        GITHUB_CONFIG.ref,
+        defaultBranch,
+        "gh-pages",
+        "main",
+        "master"
+      ]).filter(Boolean);
+
+      // If no branch detected, still attempt without ?ref (API default)
+      const refCandidates = refs.length ? refs : [""];
+
+      const roots = uniq([
+        GITHUB_CONFIG.contentRoot,
+        "",       // repo root
+        "docs"    // common Pages source
+      ]);
+
+      const attempted = [];
+
+      for (const root of roots) {
+        const base = root ? `${root.replace(/\/$/, "")}/` : "";
+        const fullPath = `${base}${dirPathInRepo}`.replace(/\/{2,}/g, "/").replace(/^\/+/, "");
+
+        for (const ref of refCandidates) {
+          const refQ = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+          const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodePathSegments(fullPath)}${refQ}`;
+          attempted.push(apiUrl);
+
+          const res = await fetch(apiUrl, { headers: { "Accept": "application/vnd.github+json" } });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (!Array.isArray(data)) {
+              throw new Error("Unexpected response when listing pre-loaded quiz folder.");
+            }
+            return { data, owner, repo, ref: ref || defaultBranch || "", root };
+          }
+
+          // continue trying other combos
+        }
+      }
+
+      throw new Error(
+        "Could not list pre-loaded quiz folder via GitHub API (HTTP 404).\n\n" +
+        "Most common fixes:\n" +
+        "1) Your GitHub Pages is served from the 'gh-pages' branch → set GITHUB_CONFIG.ref = 'gh-pages'\n" +
+        "2) Your GitHub Pages is served from '/docs' → set GITHUB_CONFIG.contentRoot = 'docs'\n" +
+        "3) Your site is hosted from a different repo → set GITHUB_CONFIG.owner/repo\n\n" +
+        "Tried:\n" + attempted.slice(0, 6).join("\n") + (attempted.length > 6 ? "\n..." : "")
+      );
+    }
+
+    function isImageFilename(name) {
+      return /\.(png|jpe?g)$/i.test(name || "");
+    }
+
+    // Use GitHub API's download_url (points to the correct branch) so we don't rely on site-relative paths.
+    async function buildPreloadedFileObjs(sourceKey) {
+      const quiz = PRELOADED_QUIZZES[sourceKey];
+      if (!quiz) throw new Error("Unknown pre-loaded quiz selection.");
+
+      const dir = String(quiz.basePath || "")
+        .replace(/^\.\//, "")
+        .replace(/\/$/, "");
+
+      const listed = await listGithubDirSmart(dir);
+      const items = listed.data;
+
+      const files = items
+        .filter(it => it && it.type === "file" && isImageFilename(it.name) && it.download_url)
+        .map(it => ({
+          kind: "url",
+          url: it.download_url,
+          name: it.name
+        }));
+
+      if (files.length === 0) {
+        throw new Error("No .png/.jpg/.jpeg images found in the selected pre-loaded quiz folder.");
+      }
+
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+      return files;
+    }
+
+    // -------------------------
+    // Filename / answer helpers
+    // -------------------------
+    function filenameFromUrl(url) {
+      const clean = (url || "").split("?")[0].split("#")[0];
+      const parts = clean.split("/");
+      const last = parts[parts.length - 1] || "";
+      try { return decodeURIComponent(last); } catch { return last; }
+    }
+
+    function displayNameFromFilename(filename) {
+      return String(filename || "")
+        .split(".")
+        .slice(0, -1)
+        .join(".")
+        .replace(/[_-]/g, " ");
+    }
+
+    function getItemFilename(item) {
+      if (!item) return "";
+      if (item.kind === "file" && item.file) return item.file.name || "";
+      if (item.kind === "url") {
+        if (item.name) return item.name;
+        if (item.url) return filenameFromUrl(item.url);
+      }
+      return item.name || "";
+    }
+
+    // -------------------------
+    // UI helpers
+    // -------------------------
+    function updateQuizSourceUi() {
+      const sel = document.getElementById("quizSelect");
+      const uploadLabel = document.getElementById("uploadLabel");
+      const uploadInput = document.getElementById("imageInput");
+      const hint = document.getElementById("quizSourceHint");
+
+      if (!sel || !uploadLabel || !uploadInput || !hint) return;
+
+      if (sel.value === "upload") {
+        uploadLabel.style.display = "block";
+        uploadInput.style.display = "block";
+        hint.textContent = "Upload images from your device.";
+      } else {
+        uploadLabel.style.display = "none";
+        uploadInput.style.display = "none";
+        const quiz = PRELOADED_QUIZZES[sel.value];
+        hint.textContent = quiz
+          ? `Using ${quiz.label} (auto-loading images from repo folder).`
+          : "Using a pre-loaded quiz set.";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const sel = document.getElementById("quizSelect");
+      if (sel) sel.addEventListener("change", updateQuizSourceUi);
+      updateQuizSourceUi();
+    });
+
+    // -------------------------
+    // Reveal stages
+    // -------------------------
     const STAGES = [
-      { blurPercent: 40, revealCount: 0,   showAnswer: false }, // Stage 1
-      { blurPercent: 20, revealCount: 20,  showAnswer: false }, // Stage 2
-      { blurPercent: 15, revealCount: 50,  showAnswer: false }, // Stage 3
-      { blurPercent: 0,  revealCount: 100, showAnswer: true  }  // Stage 4
+      { blurPercent: 40, revealCount: 0,   showAnswer: false },
+      { blurPercent: 20, revealCount: 20,  showAnswer: false },
+      { blurPercent: 15, revealCount: 50,  showAnswer: false },
+      { blurPercent: 0,  revealCount: 100, showAnswer: true  }
     ];
 
-    let tileOrder = []; // shuffled block indices per image
+    let tileOrder = [];
 
     // -------------------------
     // UI flow
     // -------------------------
-    function showCoverPage() {
+    async function showCoverPage() {
+      const source = document.getElementById('quizSelect').value;
       const input = document.getElementById('imageInput');
       const topic = document.getElementById('topicInput').value;
-      if (input.files.length === 0) return alert("Please select images.");
 
-      fileObjs = Array.from(input.files);
-      curIdx = 0;
+      try {
+        if (source === 'upload') {
+          if (input.files.length === 0) return alert("Please select images.");
+          fileObjs = Array.from(input.files).map(f => ({ kind: 'file', file: f, name: f.name }));
+        } else {
+          fileObjs = await buildPreloadedFileObjs(source);
+        }
 
-      document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
-      document.getElementById('setup-area').style.display = 'none';
-      document.getElementById('cover-page').style.display = 'flex';
+        if (fileObjs.length === 0) return alert("No images found for this quiz.");
+
+        curIdx = 0;
+
+        document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('cover-page').style.display = 'flex';
+      } catch (err) {
+        alert(err && err.message ? err.message : String(err));
+      }
     }
 
     function startGame() {
@@ -225,15 +476,12 @@
     }
 
     // -------------------------
-    // ✅ Blur logic aligned to your original file
-    // Original feel: 15% ≈ 12px, 5% ≈ 4px, 0% = 0px (linear mapping)
+    // Blur logic (same as before)
     // -------------------------
     function percentToBlurPx(pct) {
-      // 15% -> 12px, so px = pct * (12/15) = pct * 0.8
       return Math.max(0, pct * 0.8);
     }
 
-    // Ensure filter region is large enough so blur doesn't get clipped at edges
     function setFilterRegion(filterEl, w, h, blurPx) {
       const pad = Math.max(40, blurPx * 6);
       filterEl.setAttribute("filterUnits", "userSpaceOnUse");
@@ -244,13 +492,11 @@
     }
 
     // -------------------------
-    // Core: build SVG layers (blur + clear with mask)
+    // SVG build
     // -------------------------
     function buildRevealSvg(w, h) {
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "reveal-svg");
-
-      // ✅ Make SVG units = pixels so blur stdDeviation behaves like CSS px blur
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
@@ -272,7 +518,6 @@
       mask.setAttribute("id", "revealMask");
 
       const maskBg = document.createElementNS(svg.namespaceURI, "rect");
-      maskBg.setAttribute("id", "maskBg");
       maskBg.setAttribute("x", "0");
       maskBg.setAttribute("y", "0");
       maskBg.setAttribute("width", String(w));
@@ -326,17 +571,14 @@
     function applyStage(svg, stepIdx) {
       const stage = STAGES[stepIdx];
 
-      // ✅ Blur now uses px-strength derived from your original logic
       const blurPx = percentToBlurPx(stage.blurPercent);
       const blurNode = svg.querySelector("#blurNode");
       blurNode.setAttribute("stdDeviation", String(blurPx));
 
-      // Ensure filter region won’t clip the blur
       const vb = svg.viewBox.baseVal;
       const filterEl = svg.querySelector("#blurFilter");
       setFilterRegion(filterEl, vb.width, vb.height, blurPx);
 
-      // Mask rectangles (clear reveals)
       const maskGroup = svg.querySelector("#maskRects");
       maskGroup.innerHTML = "";
 
@@ -359,7 +601,6 @@
         maskGroup.appendChild(rect);
       }
 
-      // UI updates
       document.getElementById('blurLabel').innerText = `Blur: ${stage.blurPercent}%`;
 
       if (stage.showAnswer) {
@@ -374,7 +615,7 @@
     }
 
     // -------------------------
-    // Deterministic shuffle (stable per filename)
+    // Deterministic shuffle
     // -------------------------
     function hashStringToSeed(str) {
       let h = 2166136261;
@@ -412,44 +653,63 @@
     function loadLevel() {
       curStep = 0;
 
-      const file = fileObjs[curIdx];
+      const item = fileObjs[curIdx];
       const imageBox = document.getElementById('imageBox');
       const ans = document.getElementById('answerDisplay');
 
-      if (curObjectUrl) {
+      if (curObjectUrl && curObjectUrl.startsWith('blob:')) {
         URL.revokeObjectURL(curObjectUrl);
-        curObjectUrl = null;
       }
+      curObjectUrl = null;
 
-      const name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+      const filename = getItemFilename(item);
+      const name = displayNameFromFilename(filename);
       ans.innerText = name;
       ans.style.visibility = 'hidden';
 
       document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
-      tileOrder = makeTileOrder(file.name);
+      tileOrder = makeTileOrder(filename || String(curIdx));
 
       imageBox.innerHTML = '';
 
-      // ✅ Measure the container in pixels and build SVG in pixel-units
       const rect = imageBox.getBoundingClientRect();
       const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(1, Math.floor(rect.height));
       const svg = buildRevealSvg(w, h);
       imageBox.appendChild(svg);
 
-      curObjectUrl = URL.createObjectURL(file);
+      let src = '';
+      if (item && item.kind === 'file' && item.file) {
+        curObjectUrl = URL.createObjectURL(item.file);
+        src = curObjectUrl;
+      } else if (item && item.kind === 'url' && item.url) {
+        src = item.url;
+      } else {
+        alert("Invalid image item in quiz set.");
+        return location.reload();
+      }
+
       const pre = new Image();
       pre.onload = () => {
-        setSvgImageHref(svg, curObjectUrl);
-
-        // Apply stage 1 before showing
+        setSvgImageHref(svg, src);
         applyStage(svg, 0);
-
-        requestAnimationFrame(() => {
-          svg.style.opacity = "1";
-        });
+        requestAnimationFrame(() => { svg.style.opacity = "1"; });
       };
-      pre.src = curObjectUrl;
+
+      pre.onerror = () => {
+        alert(`Could not load image: ${filename}
+
+URL tried:
+${src}
+
+Check:
+1) File exists in the repo folder
+2) Filename casing matches exactly (GitHub is case-sensitive)
+3) The file is committed/pushed`);
+        location.reload();
+      };
+
+      pre.src = src;
 
       document.getElementById('revealBtn').style.display = 'block';
       document.getElementById('nextBtn').style.display = 'none';
