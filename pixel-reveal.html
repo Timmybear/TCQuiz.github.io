@@ -279,11 +279,8 @@
       return /\.(png|jpe?g|webp|gif)$/i.test(name || "");
     }
 
-    function joinBaseAndFile(basePath, filename) {
-      // Encode just the filename portion (supports spaces and special chars)
-      return String(basePath || "") + encodeURIComponent(String(filename || ""));
-    }
-
+    // Build a quiz list from GitHub folder contents.
+    // IMPORTANT: Use `download_url` from the GitHub API so we don't depend on your site folder structure.
     async function buildPreloadedFileObjs(sourceKey) {
       const quiz = PRELOADED_QUIZZES[sourceKey];
       if (!quiz) throw new Error("Unknown pre-loaded quiz selection.");
@@ -295,21 +292,20 @@
 
       const items = await listGithubDir(dir);
 
-      const filenames = items
-        .filter(it => it && it.type === "file" && isImageFilename(it.name))
-        .map(it => it.name);
+      const files = items
+        .filter(it => it && it.type === "file" && isImageFilename(it.name) && it.download_url)
+        .map(it => ({
+          kind: "url",
+          url: it.download_url, // ✅ raw GitHub file URL
+          name: it.name         // ✅ original filename (spaces preserved)
+        }));
 
-      if (filenames.length === 0) {
+      if (files.length === 0) {
         throw new Error("No images found in the selected pre-loaded quiz folder.");
       }
 
-      filenames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
-
-      return filenames.map(fn => ({
-        kind: "url",
-        url: joinBaseAndFile(quiz.basePath, fn),
-        name: fn // IMPORTANT: keep original filename (including spaces) for answer + seed
-      }));
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+      return files;
     }
 
     // -------------------------
@@ -662,12 +658,21 @@
           svg.style.opacity = "1";
         });
       };
+
+      // Improved error message shows URL tried
       pre.onerror = () => {
         alert(`Could not load image: ${filename}
 
-Check that the file exists in your GitHub repo (or re-upload your images).`);
+URL tried:
+${src}
+
+Check:
+1) File exists in the repo folder
+2) Filename casing matches exactly (GitHub is case-sensitive)
+3) The file is committed/pushed`);
         location.reload();
       };
+
       pre.src = src;
 
       document.getElementById('revealBtn').style.display = 'block';
