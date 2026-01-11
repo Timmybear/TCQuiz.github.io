@@ -42,7 +42,7 @@
       background: #080808;
     }
 
-    input[type="text"], input[type="file"] {
+    input[type="text"], input[type="file"], select {
       background: #111;
       border: 1px solid var(--border);
       color: white;
@@ -51,6 +51,15 @@
       border-radius: 8px;
       width: 80%;
     }
+
+    .hint {
+      width: 80%;
+      margin: 0 0 10px 0;
+      font-size: 0.95rem;
+      color: #cfcfcf;
+      text-align: left;
+    }
+
 
     .instruction-container { text-align: center; margin: 25px 0; }
     .instruction-list {
@@ -141,7 +150,16 @@
     <h1 style="margin-top:0;">Activity Setup</h1>
     <p>Enter the Quiz Topic</p>
     <input type="text" id="topicInput" placeholder="e.g. Movie Quiz" />
-    <p>Select Images</p>
+
+    <p>Select Quiz Source</p>
+    <select id="quizSelect">
+      <option value="upload">Upload images (from your device)</option>
+      <option value="pr_quiz1">Pre-loaded quiz 1</option>
+      <option value="pr_quiz2">Pre-loaded quiz 2</option>
+    </select>
+    <div id="quizSourceHint" class="hint"></div>
+
+    <p id="uploadLabel">Select Images</p>
     <input type="file" id="imageInput" multiple accept="image/*" />
     <br />
     <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
@@ -192,6 +210,88 @@
     const GRID = 10; // 10x10 => 100 blocks
     const TOTAL_BLOCKS = GRID * GRID;
 
+    // -------------------------
+    // Pre-loaded quiz sets (GitHub Pages)
+    // -------------------------
+    // Put images into your repo under these folders, then update the filenames below.
+    // Example folder structure:
+    //   quizzes/pixel-reveal/pr_quiz1/<your images>
+    //   quizzes/pixel-reveal/pr_quiz2/<your images>
+    //
+    // Filenames are used as answers (underscores/dashes become spaces), same as uploaded mode.
+    const PRELOADED_QUIZZES = {
+      pr_quiz1: {
+        label: "Pre-loaded quiz 1",
+        basePath: "./quizzes/pixel-reveal/pr_quiz1/",
+        images: [
+          // TODO: Replace with your real filenames (these are the answers)
+          "the_matrix.jpg",
+          "spirited_away.jpg"
+        ]
+      },
+      pr_quiz2: {
+        label: "Pre-loaded quiz 2",
+        basePath: "./quizzes/pixel-reveal/pr_quiz2/",
+        images: [
+          // TODO: Replace with your real filenames (these are the answers)
+          "inception.jpg",
+          "the_godfather.jpg"
+        ]
+      }
+    };
+
+    function filenameFromUrl(url) {
+      const clean = (url || "").split("?")[0].split("#")[0];
+      const parts = clean.split("/");
+      return parts[parts.length - 1] || "";
+    }
+
+    function displayNameFromFilename(filename) {
+      return filename
+        .split(".")
+        .slice(0, -1)
+        .join(".")
+        .replace(/[_-]/g, " ");
+    }
+
+    function getItemFilename(item) {
+      if (!item) return "";
+      if (item.kind === "file" && item.file) return item.file.name || "";
+      if (item.kind === "url" && item.url) return filenameFromUrl(item.url);
+      return item.name || "";
+    }
+
+    function updateQuizSourceUi() {
+      const sel = document.getElementById("quizSelect");
+      const uploadLabel = document.getElementById("uploadLabel");
+      const uploadInput = document.getElementById("imageInput");
+      const hint = document.getElementById("quizSourceHint");
+
+      if (!sel || !uploadLabel || !uploadInput || !hint) return;
+
+      if (sel.value === "upload") {
+        uploadLabel.style.display = "block";
+        uploadInput.style.display = "block";
+        hint.textContent = "Upload one or more images from your device.";
+      } else {
+        uploadLabel.style.display = "none";
+        uploadInput.style.display = "none";
+
+        const quiz = PRELOADED_QUIZZES[sel.value];
+        if (quiz && Array.isArray(quiz.images)) {
+          hint.textContent = `Using ${quiz.label} (${quiz.images.length} images).`;
+        } else {
+          hint.textContent = "Using a pre-loaded quiz set.";
+        }
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const sel = document.getElementById("quizSelect");
+      if (sel) sel.addEventListener("change", updateQuizSourceUi);
+      updateQuizSourceUi();
+    });
+
     // ✅ Keep your stage %s; blur strength will be derived using your original px logic
     const STAGES = [
       { blurPercent: 40, revealCount: 0,   showAnswer: false }, // Stage 1
@@ -206,11 +306,34 @@
     // UI flow
     // -------------------------
     function showCoverPage() {
+      const source = document.getElementById('quizSelect').value;
       const input = document.getElementById('imageInput');
       const topic = document.getElementById('topicInput').value;
-      if (input.files.length === 0) return alert("Please select images.");
 
-      fileObjs = Array.from(input.files);
+      if (source === 'upload') {
+        if (input.files.length === 0) return alert("Please select images.");
+        fileObjs = Array.from(input.files).map(f => ({
+          kind: 'file',
+          file: f,
+          name: f.name
+        }));
+      } else {
+        const quiz = PRELOADED_QUIZZES[source];
+        if (!quiz) return alert("Unknown pre-loaded quiz selection.");
+
+        if (!Array.isArray(quiz.images) || quiz.images.length === 0) {
+          return alert("This pre-loaded quiz has no images configured.");
+        }
+
+        fileObjs = quiz.images.map(fn => ({
+          kind: 'url',
+          url: quiz.basePath + fn,
+          name: fn
+        }));
+      }
+
+      if (fileObjs.length === 0) return alert("No images found for this quiz.");
+
       curIdx = 0;
 
       document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
@@ -412,21 +535,23 @@
     function loadLevel() {
       curStep = 0;
 
-      const file = fileObjs[curIdx];
+      const item = fileObjs[curIdx];
       const imageBox = document.getElementById('imageBox');
       const ans = document.getElementById('answerDisplay');
 
-      if (curObjectUrl) {
+      // Only revoke blob object URLs that we created
+      if (curObjectUrl && curObjectUrl.startsWith('blob:')) {
         URL.revokeObjectURL(curObjectUrl);
-        curObjectUrl = null;
       }
+      curObjectUrl = null;
 
-      const name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+      const filename = getItemFilename(item);
+      const name = displayNameFromFilename(filename);
       ans.innerText = name;
       ans.style.visibility = 'hidden';
 
       document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
-      tileOrder = makeTileOrder(file.name);
+      tileOrder = makeTileOrder(filename || String(curIdx));
 
       imageBox.innerHTML = '';
 
@@ -437,10 +562,21 @@
       const svg = buildRevealSvg(w, h);
       imageBox.appendChild(svg);
 
-      curObjectUrl = URL.createObjectURL(file);
+      // Determine image source
+      let src = '';
+      if (item && item.kind === 'file' && item.file) {
+        curObjectUrl = URL.createObjectURL(item.file);
+        src = curObjectUrl;
+      } else if (item && item.kind === 'url' && item.url) {
+        src = item.url;
+      } else {
+        alert("Invalid image item in quiz set.");
+        return location.reload();
+      }
+
       const pre = new Image();
       pre.onload = () => {
-        setSvgImageHref(svg, curObjectUrl);
+        setSvgImageHref(svg, src);
 
         // Apply stage 1 before showing
         applyStage(svg, 0);
@@ -449,7 +585,13 @@
           svg.style.opacity = "1";
         });
       };
-      pre.src = curObjectUrl;
+      pre.onerror = () => {
+        alert(`Could not load image: ${filename}
+
+Check that the file exists in your GitHub repo (or re-upload your images).`);
+        location.reload();
+      };
+      pre.src = src;
 
       document.getElementById('revealBtn').style.display = 'block';
       document.getElementById('nextBtn').style.display = 'none';
