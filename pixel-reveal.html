@@ -40,6 +40,8 @@
       padding: 40px;
       border-radius: 20px;
       background: #080808;
+      flex-direction: column;
+      align-items: center;
     }
 
     input[type="text"], input[type="file"], select {
@@ -59,7 +61,6 @@
       color: #cfcfcf;
       text-align: left;
     }
-
 
     .instruction-container { text-align: center; margin: 25px 0; }
     .instruction-list {
@@ -109,7 +110,7 @@
       font-weight: 600;
     }
 
-    .controls { margin-top: 30px; display: flex; gap: 20px; }
+    .controls { margin-top: 30px; display: flex; gap: 20px; justify-content: center; }
 
     button {
       padding: 16px 45px;
@@ -213,41 +214,117 @@
     // -------------------------
     // Pre-loaded quiz sets (GitHub Pages)
     // -------------------------
-    // Put images into your repo under these folders, then update the filenames below.
-    // Example folder structure:
+    // Folder structure:
     //   quizzes/pixel-reveal/pr_quiz1/<your images>
     //   quizzes/pixel-reveal/pr_quiz2/<your images>
     //
-    // Filenames are used as answers (underscores/dashes become spaces), same as uploaded mode.
+    // Filenames are used as answers (underscores/dashes become spaces).
+    // Spaces in filenames are supported.
     const PRELOADED_QUIZZES = {
       pr_quiz1: {
         label: "Pre-loaded quiz 1",
-        basePath: "./quizzes/pixel-reveal/pr_quiz1/",
-        images: [
-          // TODO: Replace with your real filenames (these are the answers)
-          "the_matrix.jpg",
-          "spirited_away.jpg"
-        ]
+        basePath: "./quizzes/pixel-reveal/pr_quiz1/"
       },
       pr_quiz2: {
         label: "Pre-loaded quiz 2",
-        basePath: "./quizzes/pixel-reveal/pr_quiz2/",
-        images: [
-          // TODO: Replace with your real filenames (these are the answers)
-          "inception.jpg",
-          "the_godfather.jpg"
-        ]
+        basePath: "./quizzes/pixel-reveal/pr_quiz2/"
       }
     };
 
+    // For GitHub Pages: auto-discover images in a folder using the GitHub REST API (public repos).
+    function encodePathSegments(path) {
+      return String(path || "")
+        .split("/")
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join("/");
+    }
+
+    function inferGithubRepoFromLocation() {
+      const host = window.location.hostname || "";
+      if (!host.endsWith("github.io")) return null;
+
+      const owner = host.split(".")[0] || "";
+      const seg = (window.location.pathname || "").split("/").filter(Boolean);
+
+      // Project pages: https://<owner>.github.io/<repo>/
+      // User pages:    https://<owner>.github.io/  (repo is <owner>.github.io)
+      const repo = seg.length > 0 ? seg[0] : `${owner}.github.io`;
+
+      if (!owner || !repo) return null;
+      return { owner, repo };
+    }
+
+    async function listGithubDir(dirPathInRepo) {
+      const gh = inferGithubRepoFromLocation();
+      if (!gh) {
+        throw new Error("Pre-loaded quizzes need GitHub Pages on a *.github.io domain (or a similar host).");
+      }
+
+      const apiUrl = `https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${encodePathSegments(dirPathInRepo)}`;
+      const res = await fetch(apiUrl, { headers: { "Accept": "application/vnd.github+json" } });
+
+      if (!res.ok) {
+        throw new Error(`Could not list pre-loaded quiz folder via GitHub API (HTTP ${res.status}).`);
+      }
+
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Unexpected response when listing pre-loaded quiz folder.");
+      }
+      return data;
+    }
+
+    function isImageFilename(name) {
+      return /\.(png|jpe?g|webp|gif)$/i.test(name || "");
+    }
+
+    function joinBaseAndFile(basePath, filename) {
+      // Encode just the filename portion (supports spaces and special chars)
+      return String(basePath || "") + encodeURIComponent(String(filename || ""));
+    }
+
+    async function buildPreloadedFileObjs(sourceKey) {
+      const quiz = PRELOADED_QUIZZES[sourceKey];
+      if (!quiz) throw new Error("Unknown pre-loaded quiz selection.");
+
+      // "./quizzes/pixel-reveal/pr_quiz1/" -> "quizzes/pixel-reveal/pr_quiz1"
+      const dir = String(quiz.basePath || "")
+        .replace(/^\.\//, "")
+        .replace(/\/$/, "");
+
+      const items = await listGithubDir(dir);
+
+      const filenames = items
+        .filter(it => it && it.type === "file" && isImageFilename(it.name))
+        .map(it => it.name);
+
+      if (filenames.length === 0) {
+        throw new Error("No images found in the selected pre-loaded quiz folder.");
+      }
+
+      filenames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
+      return filenames.map(fn => ({
+        kind: "url",
+        url: joinBaseAndFile(quiz.basePath, fn),
+        name: fn // IMPORTANT: keep original filename (including spaces) for answer + seed
+      }));
+    }
+
+    // -------------------------
+    // Filename / answer helpers
+    // -------------------------
     function filenameFromUrl(url) {
       const clean = (url || "").split("?")[0].split("#")[0];
       const parts = clean.split("/");
-      return parts[parts.length - 1] || "";
+      const last = parts[parts.length - 1] || "";
+      // Decode %20 etc back to real characters (supports spaces in filenames)
+      try { return decodeURIComponent(last); } catch { return last; }
     }
 
     function displayNameFromFilename(filename) {
-      return filename
+      return String(filename || "")
         .split(".")
         .slice(0, -1)
         .join(".")
@@ -256,11 +333,21 @@
 
     function getItemFilename(item) {
       if (!item) return "";
+
       if (item.kind === "file" && item.file) return item.file.name || "";
-      if (item.kind === "url" && item.url) return filenameFromUrl(item.url);
+
+      if (item.kind === "url") {
+        // Prefer raw name returned by GitHub API (keeps spaces exactly)
+        if (item.name) return item.name;
+        if (item.url) return filenameFromUrl(item.url);
+      }
+
       return item.name || "";
     }
 
+    // -------------------------
+    // UI helpers
+    // -------------------------
     function updateQuizSourceUi() {
       const sel = document.getElementById("quizSelect");
       const uploadLabel = document.getElementById("uploadLabel");
@@ -272,17 +359,14 @@
       if (sel.value === "upload") {
         uploadLabel.style.display = "block";
         uploadInput.style.display = "block";
-        hint.textContent = "Upload one or more images from your device.";
+        hint.textContent = "Upload images from your device.";
       } else {
         uploadLabel.style.display = "none";
         uploadInput.style.display = "none";
-
         const quiz = PRELOADED_QUIZZES[sel.value];
-        if (quiz && Array.isArray(quiz.images)) {
-          hint.textContent = `Using ${quiz.label} (${quiz.images.length} images).`;
-        } else {
-          hint.textContent = "Using a pre-loaded quiz set.";
-        }
+        hint.textContent = quiz
+          ? `Using ${quiz.label} (auto-loading images from repo folder).`
+          : "Using a pre-loaded quiz set.";
       }
     }
 
@@ -305,40 +389,33 @@
     // -------------------------
     // UI flow
     // -------------------------
-    function showCoverPage() {
+    async function showCoverPage() {
       const source = document.getElementById('quizSelect').value;
       const input = document.getElementById('imageInput');
       const topic = document.getElementById('topicInput').value;
 
-      if (source === 'upload') {
-        if (input.files.length === 0) return alert("Please select images.");
-        fileObjs = Array.from(input.files).map(f => ({
-          kind: 'file',
-          file: f,
-          name: f.name
-        }));
-      } else {
-        const quiz = PRELOADED_QUIZZES[source];
-        if (!quiz) return alert("Unknown pre-loaded quiz selection.");
-
-        if (!Array.isArray(quiz.images) || quiz.images.length === 0) {
-          return alert("This pre-loaded quiz has no images configured.");
+      try {
+        if (source === 'upload') {
+          if (input.files.length === 0) return alert("Please select images.");
+          fileObjs = Array.from(input.files).map(f => ({
+            kind: 'file',
+            file: f,
+            name: f.name
+          }));
+        } else {
+          fileObjs = await buildPreloadedFileObjs(source);
         }
 
-        fileObjs = quiz.images.map(fn => ({
-          kind: 'url',
-          url: quiz.basePath + fn,
-          name: fn
-        }));
+        if (fileObjs.length === 0) return alert("No images found for this quiz.");
+
+        curIdx = 0;
+
+        document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('cover-page').style.display = 'flex';
+      } catch (err) {
+        alert(err && err.message ? err.message : String(err));
       }
-
-      if (fileObjs.length === 0) return alert("No images found for this quiz.");
-
-      curIdx = 0;
-
-      document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
-      document.getElementById('setup-area').style.display = 'none';
-      document.getElementById('cover-page').style.display = 'flex';
     }
 
     function startGame() {
