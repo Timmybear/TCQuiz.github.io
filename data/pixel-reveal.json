@@ -1,10 +1,14 @@
 [
   {
-    "url": "images/sample-1.jpg",
-    "answer": "Sample One"
+    "url": "images/Batman3.jpg",
+    "answer": "Batman 3 (2001)"
   },
   {
-    "url": "images/sample-2.jpg",
-    "answer": "Sample Two"
+    "url": "images/Superman1.jpg",
+    "answer": "Superman 1 (2001)"
+  },
+  {
+    "url": "images/Superman2.jpg",
+    "answer": "Superman 2 (2001)"
   }
 ]
