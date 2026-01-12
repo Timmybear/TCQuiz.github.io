@@ -112,6 +112,22 @@
     }
     .source-toggle input { margin-right: 6px; }
 
+    .manifest-warning {
+      color: #fbbf24;
+      font-size: 0.95rem;
+      margin: 8px 0 0;
+      max-width: 80%;
+    }
+
+    .image-error {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      max-width: 70%;
+      line-height: 1.6;
+      opacity: 0.85;
+    }
+
     button {
       padding: 16px 45px;
       font-size: 1.1rem;
@@ -166,6 +182,7 @@
       <p>Manifest URL (JSON)</p>
       <input type="text" id="manifestInput" value="data/pixel-reveal.json" />
       <p style="opacity:.7; font-size:0.95rem; margin:4px 0 0;">Each item should include <b>url</b> and <b>answer</b>.</p>
+      <p id="manifestWarning" class="manifest-warning" style="display:none;"></p>
     </div>
     <br />
     <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
@@ -258,9 +275,12 @@
 
     async function loadManifestAndContinue() {
       const manifestUrl = document.getElementById('manifestInput').value.trim();
+      const warningEl = document.getElementById('manifestWarning');
       if (!manifestUrl) {
         return alert("Please enter a manifest URL.");
       }
+      warningEl.style.display = 'none';
+      warningEl.textContent = '';
 
       try {
         const response = await fetch(manifestUrl, { cache: "no-store" });
@@ -271,7 +291,24 @@
         if (!Array.isArray(data) || data.length === 0) {
           throw new Error("Manifest is empty or invalid.");
         }
-        repoItems = data.filter(item => item && item.url && item.answer);
+        const baseUrl = new URL(manifestUrl, window.location.href);
+        const invalidEntries = [];
+        repoItems = data
+          .map((item, index) => {
+            if (!item || !item.url || !item.answer) {
+              invalidEntries.push(index + 1);
+              return null;
+            }
+            return {
+            url: new URL(item.url, baseUrl).href,
+            answer: item.answer
+            };
+          })
+          .filter(Boolean);
+        if (invalidEntries.length > 0) {
+          warningEl.style.display = 'block';
+          warningEl.textContent = `Manifest warning: entries ${invalidEntries.join(', ')} are missing url or answer and were skipped.`;
+        }
         if (repoItems.length === 0) {
           throw new Error("Manifest needs items with url and answer.");
         }
@@ -516,6 +553,11 @@
         requestAnimationFrame(() => {
           svg.style.opacity = "1";
         });
+      };
+      pre.onerror = () => {
+        imageBox.innerHTML = '<div class="image-error">Image failed to load. Check the manifest URL and file path, then try again.</div>';
+        document.getElementById('revealBtn').style.display = 'none';
+        document.getElementById('nextBtn').style.display = 'block';
       };
       pre.src = curObjectUrl;
 
