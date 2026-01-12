@@ -102,6 +102,16 @@
 
     .controls { margin-top: 30px; display: flex; gap: 20px; }
 
+    .source-toggle {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0 20px;
+      font-weight: 600;
+    }
+    .source-toggle input { margin-right: 6px; }
+
     button {
       padding: 16px 45px;
       font-size: 1.1rem;
@@ -141,8 +151,22 @@
     <h1 style="margin-top:0;">Activity Setup</h1>
     <p>Enter the Quiz Topic</p>
     <input type="text" id="topicInput" placeholder="e.g. Movie Quiz" />
-    <p>Select Images</p>
-    <input type="file" id="imageInput" multiple accept="image/*" />
+    <p>Choose Image Source</p>
+    <div class="source-toggle">
+      <label><input type="radio" name="sourceMode" value="local" checked /> Upload from device</label>
+      <label><input type="radio" name="sourceMode" value="repo" /> Use repo manifest</label>
+    </div>
+
+    <div id="local-source">
+      <p>Select Images</p>
+      <input type="file" id="imageInput" multiple accept="image/*" />
+    </div>
+
+    <div id="repo-source" style="display:none;">
+      <p>Manifest URL (JSON)</p>
+      <input type="text" id="manifestInput" value="data/pixel-reveal.json" />
+      <p style="opacity:.7; font-size:0.95rem; margin:4px 0 0;">Each item should include <b>url</b> and <b>answer</b>.</p>
+    </div>
     <br />
     <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
   </div>
@@ -184,9 +208,12 @@
     // Game state
     // -------------------------
     let fileObjs = [];
+    let repoItems = [];
+    let useRepo = false;
     let curIdx = 0;
     let curStep = 0;
     let curObjectUrl = null;
+    let curObjectIsBlob = false;
 
     // Reveal design
     const GRID = 10; // 10x10 => 100 blocks
@@ -206,16 +233,53 @@
     // UI flow
     // -------------------------
     function showCoverPage() {
+      const mode = document.querySelector('input[name="sourceMode"]:checked').value;
       const input = document.getElementById('imageInput');
       const topic = document.getElementById('topicInput').value;
-      if (input.files.length === 0) return alert("Please select images.");
+      useRepo = mode === "repo";
 
-      fileObjs = Array.from(input.files);
+      if (!useRepo && input.files.length === 0) {
+        return alert("Please select images.");
+      }
+
+      if (!useRepo) {
+        fileObjs = Array.from(input.files);
+      }
       curIdx = 0;
 
       document.getElementById('displayTopic').innerText = topic || "The Pixel Reveal";
-      document.getElementById('setup-area').style.display = 'none';
-      document.getElementById('cover-page').style.display = 'flex';
+      if (useRepo) {
+        loadManifestAndContinue();
+      } else {
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('cover-page').style.display = 'flex';
+      }
+    }
+
+    async function loadManifestAndContinue() {
+      const manifestUrl = document.getElementById('manifestInput').value.trim();
+      if (!manifestUrl) {
+        return alert("Please enter a manifest URL.");
+      }
+
+      try {
+        const response = await fetch(manifestUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Manifest load failed (${response.status})`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error("Manifest is empty or invalid.");
+        }
+        repoItems = data.filter(item => item && item.url && item.answer);
+        if (repoItems.length === 0) {
+          throw new Error("Manifest needs items with url and answer.");
+        }
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('cover-page').style.display = 'flex';
+      } catch (err) {
+        alert(`Unable to load manifest: ${err.message}`);
+      }
     }
 
     function startGame() {
@@ -412,21 +476,24 @@
     function loadLevel() {
       curStep = 0;
 
-      const file = fileObjs[curIdx];
+      const file = useRepo ? repoItems[curIdx] : fileObjs[curIdx];
       const imageBox = document.getElementById('imageBox');
       const ans = document.getElementById('answerDisplay');
 
-      if (curObjectUrl) {
+      if (curObjectUrl && curObjectIsBlob) {
         URL.revokeObjectURL(curObjectUrl);
         curObjectUrl = null;
       }
 
-      const name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+      const name = useRepo
+        ? file.answer
+        : file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
       ans.innerText = name;
       ans.style.visibility = 'hidden';
 
-      document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${fileObjs.length}`;
-      tileOrder = makeTileOrder(file.name);
+      const totalCount = useRepo ? repoItems.length : fileObjs.length;
+      document.getElementById('imgCounter').innerText = `Challenge ${curIdx + 1} of ${totalCount}`;
+      tileOrder = makeTileOrder(useRepo ? file.url : file.name);
 
       imageBox.innerHTML = '';
 
@@ -437,7 +504,8 @@
       const svg = buildRevealSvg(w, h);
       imageBox.appendChild(svg);
 
-      curObjectUrl = URL.createObjectURL(file);
+      curObjectIsBlob = !useRepo;
+      curObjectUrl = useRepo ? file.url : URL.createObjectURL(file);
       const pre = new Image();
       pre.onload = () => {
         setSvgImageHref(svg, curObjectUrl);
@@ -467,7 +535,8 @@
     }
 
     function nextImg() {
-      if (curIdx < fileObjs.length - 1) {
+      const totalCount = useRepo ? repoItems.length : fileObjs.length;
+      if (curIdx < totalCount - 1) {
         curIdx++;
         loadLevel();
       } else {
@@ -475,6 +544,17 @@
         location.reload();
       }
     }
+
+    function updateSourceUI() {
+      const mode = document.querySelector('input[name="sourceMode"]:checked').value;
+      document.getElementById('local-source').style.display = mode === 'local' ? 'block' : 'none';
+      document.getElementById('repo-source').style.display = mode === 'repo' ? 'block' : 'none';
+    }
+
+    document.querySelectorAll('input[name="sourceMode"]').forEach((el) => {
+      el.addEventListener('change', updateSourceUI);
+    });
+    updateSourceUI();
   </script>
 </body>
 </html>
