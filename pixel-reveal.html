@@ -271,13 +271,7 @@
         if (!Array.isArray(data) || data.length === 0) {
           throw new Error("Manifest is empty or invalid.");
         }
-        const baseUrl = new URL(manifestUrl, window.location.href);
-        repoItems = data
-          .filter(item => item && item.url && item.answer)
-          .map(item => ({
-            url: new URL(item.url, baseUrl).href,
-            answer: item.answer
-          }));
+        repoItems = data.filter(item => item && item.url && item.answer);
         if (repoItems.length === 0) {
           throw new Error("Manifest needs items with url and answer.");
         }
