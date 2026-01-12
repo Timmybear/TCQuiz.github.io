@@ -1,22 +1,22 @@
 [
   {
-    "url": "Batman1.jpg",
+    "url": "data/Batman1.jpg",
     "answer": "Batman 1 (2001)"
   },
   {
-    "url": "Batman2.jpg",
+    "url": "data/Batman2.jpg",
     "answer": "Batman 2 (2001)"
   },
   {
-    "url": "Batman3.jpg",
+    "url": "data/Batman3.jpg",
     "answer": "Batman 3 (2001)"
   },
   {
-    "url": "Superman1.jpg",
+    "url": "data/Superman1.jpg",
     "answer": "Superman 1 (2001)"
   },
   {
-    "url": "Superman2.jpg",
+    "url": "data/Superman2.jpg",
     "answer": "Superman 2 (2001)"
   }
 ]
