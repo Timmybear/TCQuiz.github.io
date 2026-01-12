@@ -82,7 +82,34 @@
         .bar { width: 12px; height: 20px; background: var(--primary); border-radius: 6px; transition: height 0.2s ease; }
 
         .controls { margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-        
+
+        .source-toggle {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0 20px;
+            font-weight: 600;
+        }
+        .source-toggle input { margin-right: 6px; }
+
+        .manifest-warning {
+            color: #fbbf24;
+            font-size: 0.95rem;
+            margin: 8px 0 0;
+            max-width: 80%;
+        }
+
+        .audio-error {
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            max-width: 80%;
+            line-height: 1.5;
+            opacity: 0.85;
+        }
+
         button {
             padding: 16px 30px;
             font-size: 1rem;
@@ -125,8 +152,23 @@
         <h1 style="margin-top:0;">Audio Quiz Setup</h1>
         <p>Step 1: Quiz Topic (e.g. 90s Pop Hits)</p>
         <input type="text" id="topicInput" placeholder="Enter topic here...">
-        <p>Step 2: Select MP3 Files (Rename files to the answer!)</p>
-        <input type="file" id="audioInput" multiple accept="audio/*">
+        <p>Step 2: Choose Audio Source</p>
+        <div class="source-toggle">
+            <label><input type="radio" name="sourceMode" value="local" checked> Upload from device</label>
+            <label><input type="radio" name="sourceMode" value="repo"> Use repo manifest</label>
+        </div>
+
+        <div id="local-source">
+            <p>Select MP3 Files (Rename files to the answer!)</p>
+            <input type="file" id="audioInput" multiple accept="audio/*">
+        </div>
+
+        <div id="repo-source" style="display:none;">
+            <p>Manifest URL (JSON)</p>
+            <input type="text" id="manifestInput" value="data/music-intro.json">
+            <p style="opacity:.7; font-size:0.95rem; margin:4px 0 0;">Each item should include <b>url</b> and <b>answer</b>.</p>
+            <p id="manifestWarning" class="manifest-warning" style="display:none;"></p>
+        </div>
         <br>
         <button class="btn-primary" onclick="showCoverPage()">Generate Quiz</button>
     </div>
@@ -166,23 +208,83 @@
             <button id="revealBtn" class="btn-primary" onclick="revealAnswer()">Reveal Answer</button>
             <button id="nextBtn" class="btn-success" onclick="nextTrack()" style="display:none;">Next Track →</button>
         </div>
+        <div id="audioError" class="audio-error" style="display:none;"></div>
     </div>
 
     <script>
         let audioFiles = [];
+        let repoItems = [];
+        let useRepo = false;
         let curIdx = 0;
         let audioPlayer = new Audio();
         let currentTimeout;
         let fadeInterval;
+        let curObjectUrl = null;
+        let curObjectIsBlob = false;
 
         function showCoverPage() {
             const input = document.getElementById('audioInput');
             const topic = document.getElementById('topicInput').value;
-            if (input.files.length === 0) return alert("Please select audio files.");
-            audioFiles = Array.from(input.files);
+            const mode = document.querySelector('input[name="sourceMode"]:checked').value;
+            useRepo = mode === "repo";
+
+            if (!useRepo && input.files.length === 0) return alert("Please select audio files.");
+            if (!useRepo) {
+                audioFiles = Array.from(input.files);
+            }
             document.getElementById('displayTopic').innerText = topic || "Audio Challenge";
-            document.getElementById('setup-area').style.display = 'none';
-            document.getElementById('cover-page').style.display = 'flex';
+            if (useRepo) {
+                loadManifestAndContinue();
+            } else {
+                document.getElementById('setup-area').style.display = 'none';
+                document.getElementById('cover-page').style.display = 'flex';
+            }
+        }
+
+        async function loadManifestAndContinue() {
+            const manifestUrl = document.getElementById('manifestInput').value.trim();
+            const warningEl = document.getElementById('manifestWarning');
+            if (!manifestUrl) {
+                return alert("Please enter a manifest URL.");
+            }
+            warningEl.style.display = 'none';
+            warningEl.textContent = '';
+
+            try {
+                const response = await fetch(manifestUrl, { cache: "no-store" });
+                if (!response.ok) {
+                    throw new Error(`Manifest load failed (${response.status})`);
+                }
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error("Manifest is empty or invalid.");
+                }
+                const baseUrl = new URL(manifestUrl, window.location.href);
+                const invalidEntries = [];
+                repoItems = data
+                    .map((item, index) => {
+                        if (!item || !item.url || !item.answer) {
+                            invalidEntries.push(index + 1);
+                            return null;
+                        }
+                        return {
+                            url: new URL(item.url, baseUrl).href,
+                            answer: item.answer
+                        };
+                    })
+                    .filter(Boolean);
+                if (invalidEntries.length > 0) {
+                    warningEl.style.display = 'block';
+                    warningEl.textContent = `Manifest warning: entries ${invalidEntries.join(', ')} are missing url or answer and were skipped.`;
+                }
+                if (repoItems.length === 0) {
+                    throw new Error("Manifest needs items with url and answer.");
+                }
+                document.getElementById('setup-area').style.display = 'none';
+                document.getElementById('cover-page').style.display = 'flex';
+            } catch (err) {
+                alert(`Unable to load manifest: ${err.message}`);
+            }
         }
 
         function startGame() {
@@ -193,16 +295,25 @@
 
         function loadTrack() {
             stopAudioImmediate();
-            const file = audioFiles[curIdx];
-            audioPlayer.src = URL.createObjectURL(file);
+            const file = useRepo ? repoItems[curIdx] : audioFiles[curIdx];
+            if (curObjectUrl && curObjectIsBlob) {
+                URL.revokeObjectURL(curObjectUrl);
+            }
+            curObjectIsBlob = !useRepo;
+            curObjectUrl = useRepo ? file.url : URL.createObjectURL(file);
+            audioPlayer.src = curObjectUrl;
             audioPlayer.volume = 1; // Reset volume for new track
             
-            let name = file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
+            let name = useRepo
+                ? file.answer
+                : file.name.split('.').slice(0, -1).join('.').replace(/[_-]/g, ' ');
             document.getElementById('answerDisplay').innerText = name;
             document.getElementById('answerDisplay').style.visibility = 'hidden';
-            document.getElementById('imgCounter').innerText = `Track ${curIdx + 1} of ${audioFiles.length}`;
+            const totalCount = useRepo ? repoItems.length : audioFiles.length;
+            document.getElementById('imgCounter').innerText = `Track ${curIdx + 1} of ${totalCount}`;
             document.getElementById('revealBtn').style.display = 'block';
             document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('audioError').style.display = 'none';
         }
 
         function playStart(s) {
@@ -219,14 +330,18 @@
         function playFull() {
             stopAudioImmediate();
             toggleVisualizer(true);
-            audioPlayer.play();
+            audioPlayer.play().catch(() => {
+                showAudioError();
+            });
             audioPlayer.onended = () => toggleVisualizer(false);
         }
 
         function startPlayback(s) {
             audioPlayer.volume = 1; 
             toggleVisualizer(true);
-            audioPlayer.play();
+            audioPlayer.play().catch(() => {
+                showAudioError();
+            });
             currentTimeout = setTimeout(() => {
                 audioPlayer.pause();
                 toggleVisualizer(false);
@@ -238,6 +353,15 @@
             clearInterval(fadeInterval);
             audioPlayer.pause();
             toggleVisualizer(false);
+        }
+
+        function showAudioError() {
+            toggleVisualizer(false);
+            const errorEl = document.getElementById('audioError');
+            errorEl.textContent = 'Audio failed to load. Check the manifest URL and file path, then try again.';
+            errorEl.style.display = 'block';
+            document.getElementById('revealBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
         }
 
         function revealAnswer() {
@@ -271,7 +395,8 @@
         }
 
         function nextTrack() {
-            if (curIdx < audioFiles.length - 1) {
+            const totalCount = useRepo ? repoItems.length : audioFiles.length;
+            if (curIdx < totalCount - 1) {
                 curIdx++;
                 loadTrack();
             } else {
@@ -279,6 +404,17 @@
                 location.reload();
             }
         }
+
+        function updateSourceUI() {
+            const mode = document.querySelector('input[name="sourceMode"]:checked').value;
+            document.getElementById('local-source').style.display = mode === 'local' ? 'block' : 'none';
+            document.getElementById('repo-source').style.display = mode === 'repo' ? 'block' : 'none';
+        }
+
+        document.querySelectorAll('input[name="sourceMode"]').forEach((el) => {
+            el.addEventListener('change', updateSourceUI);
+        });
+        updateSourceUI();
     </script>
 </body>
 </html>
