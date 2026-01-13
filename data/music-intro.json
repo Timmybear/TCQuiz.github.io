@@ -1,10 +1,14 @@
 [
   {
-    "url": "audio/sample-1.mp3",
-    "answer": "Sample Track One"
+    "url": "audio/DANCEMONKEY.mp3",
+    "answer": "Dance Monkey – Tones and I"
   },
   {
-    "url": "audio/sample-2.mp3",
-    "answer": "Sample Track Two"
+    "url": "audio/TheWeeknd.mp3",
+    "answer": "The Weeknd - Timothy Chen"
+  },
+  {
+    "url": "audio/DontStartNow.mp3",
+    "answer": "Don't Start Now – Dua Lipa"
   }
 ]
