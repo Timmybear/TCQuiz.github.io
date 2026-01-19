@@ -1,14 +1,22 @@
 [
   {
-    "url": "audio/DANCEMONKEY.mp3",
-    "answer": "Dance Monkey – Tones and I"
+    "url": "audio/song1.mp3",
+    "answer": "Rolling in the Deep — Adele"
   },
   {
-    "url": "audio/TheWeeknd.mp3",
-    "answer": "The Weeknd - Timothy Chen"
+    "url": "audio/song2.mp3",
+    "answer": "Somebody That I Used to Know — Gotye feat. Kimbra"
   },
   {
-    "url": "audio/DontStartNow.mp3",
-    "answer": "Don't Start Now – Dua Lipa"
+    "url": "audio/song3.mp3",
+    "answer": "Uptown Funk — Mark Ronson feat. Bruno Mars"
+  },
+  {
+    "url": "audio/song4.mp3",
+    "answer": "Happy — Pharrell Williams"
+  },
+  {
+    "url": "audio/song5.mp3",
+    "answer": "Shake It Off — Taylor Swift"
   }
 ]
