@@ -1,22 +1,26 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "Rolling in the Deep — Adele"
+    "answer": "Britney Spears — …Baby One More Time (1998)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Somebody That I Used to Know — Gotye feat. Kimbra"
+    "answer": "Michael Jackson — Billie Jean (1982)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "Uptown Funk — Mark Ronson feat. Bruno Mars"
+    "answer": "New Order — Blue Monday (1983)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "Happy — Pharrell Williams"
+    "answer": "Nirvana — Smells Like Teen Spirit (1991)"
   },
   {
     "url": "audio/song5.mp3",
-    "answer": "Shake It Off — Taylor Swift"
+    "answer": "The Notorious B.I.G. — Juicy (1994)"
+  },
+  {
+    "url": "audio/song6.mp3",
+    "answer": "The Cure — Just Like Heaven (1987)"
   }
 ]
