@@ -1,26 +1,26 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "Britney Spears — …Baby One More Time (1998)"
+    "answer": "Dancing Queen — ABBA (1976)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Michael Jackson — Billie Jean (1982)"
+    "answer": "Stayin’ Alive — Bee Gees (1977)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "New Order — Blue Monday (1983)"
+    "answer": "My Girl — The Temptations (1964)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "Nirvana — Smells Like Teen Spirit (1991)"
+    "answer": "Hotel California — Eagles (1976)"
   },
   {
     "url": "audio/song5.mp3",
-    "answer": "The Notorious B.I.G. — Juicy (1994)"
+    "answer": "Bohemian Rhapsody — Queen (1975)"
   },
   {
     "url": "audio/song6.mp3",
-    "answer": "The Cure — Just Like Heaven (1987)"
+    "answer": "Respect — Aretha Franklin (1967)"
   }
 ]
