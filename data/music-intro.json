@@ -1,26 +1,34 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "Dancing Queen — ABBA (1976)"
+    "answer": "What a Wonderful World — Louis Armstrong (1959)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Stayin’ Alive — Bee Gees (1977)"
+    "answer": "Hey Jude — The Beatles (1968)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "My Girl — The Temptations (1964)"
+    "answer": "Paint It, Black — The Rolling Stones (1966)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "Hotel California — Eagles (1976)"
+    "answer": "I Want to Hold Your Hand — The Beatles (1963)"
   },
   {
     "url": "audio/song5.mp3",
-    "answer": "Bohemian Rhapsody — Queen (1975)"
+    "answer": "(I Can’t Get No) Satisfaction — The Rolling Stones (1965)"
   },
   {
     "url": "audio/song6.mp3",
-    "answer": "Respect — Aretha Franklin (1967)"
+    "answer": "La Bamba — Ritchie Valens (1958)"
+  },
+  {
+    "url": "audio/song7.mp3",
+    "answer": "Rock Around the Clock — Bill Haley & His Comets (1954)"
+  },
+  {
+    "url": "audio/song8.mp3",
+    "answer": "Hound Dog — Elvis Presley (1956)"
   }
 ]
