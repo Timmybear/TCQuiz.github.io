@@ -1,34 +1,43 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "What a Wonderful World — Louis Armstrong (1959)"
+    "answer": "Superstition — Stevie Wonder (1972)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Hey Jude — The Beatles (1968)"
+    "answer": "Every Breath You Take — The Police (1983)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "Paint It, Black — The Rolling Stones (1966)"
+    "answer": "Good Vibrations — The Beach Boys (1966)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "I Want to Hold Your Hand — The Beatles (1963)"
+    "answer": "Purple Rain — Prince (1984)"
   },
   {
     "url": "audio/song5.mp3",
-    "answer": "(I Can’t Get No) Satisfaction — The Rolling Stones (1965)"
+    "answer": "I Will Survive — Gloria Gaynor (1978)"
   },
   {
     "url": "audio/song6.mp3",
-    "answer": "La Bamba — Ritchie Valens (1958)"
+    "answer": "It's You — Kem (2014)"
   },
   {
     "url": "audio/song7.mp3",
-    "answer": "Rock Around the Clock — Bill Haley & His Comets (1954)"
+    "answer": "Tell Her Love Has Felt The Need  — Eddie Kendricks (1974)"
   },
   {
     "url": "audio/song8.mp3",
-    "answer": "Hound Dog — Elvis Presley (1956)"
+    "answer": "Like a Prayer — Madonna (1989)"
+  },
+  {
+    "url": "audio/song9.mp3",
+    "answer": "The Sweetest Love — Robin Thicke (2008)"
+  },
+  {
+    "url": "audio/song10.mp3",
+    "answer": "[If Loving You Is Wrong] I Don't Want To Be Right - David Ruffin (1974)"
   }
 ]
+
