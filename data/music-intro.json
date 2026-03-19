@@ -1,24 +1,43 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "With or Without You — U2 (1987)"
+    "answer": "Rhythm Is Gonna Get You — Gloria Estefan and Miami Sound Machine (1987)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Don’t Stop Me Now — Queen (1978)"
+    "answer": "Into the Groove — Madonna (1985)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "Wake Me Up Before You Go-Go — Wham! (1984)"
+    "answer": "September — Earth, Wind & Fire (1978)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "Wonderwall — Oasis (1995)"
-  },
+    "answer": "I Wanna Dance with Somebody (Who Loves Me) — Whitney Houston (1987)"
+  },  
   {
     "url": "audio/song5.mp3",
-    "answer": "Livin’ on a Prayer — Bon Jovi (1986)"
+    "answer": "Disco Inferno — The Trammps (1976)"
+  },
+  {
+    "url": "audio/song6.mp3",
+    "answer": "Relax — Frankie Goes to Hollywood (1983)"
+  },
+  {
+    "url": "audio/song7.mp3",
+    "answer": "Le Freak — Chic (1978)"
+  },
+  {
+    "url": "audio/song8.mp3",
+    "answer": "We Are Family — Sister Sledge (1979)"
+  },
+  {
+    "url": "audio/song9.mp3",
+    "answer": "Y.M.C.A. — Village People (1978)"
+  },
+  {
+    "url": "audio/song10.mp3",
+    "answer": "Girls Just Want to Have Fun — Cyndi Lauper (1983)
   }
 ]
-
 
