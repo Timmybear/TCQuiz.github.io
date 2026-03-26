@@ -1,43 +1,24 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "Rhythm Is Gonna Get You — Gloria Estefan and Miami Sound Machine (1987)"
+    "answer": "Respect — Aretha Franklin (1967)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Into the Groove — Madonna (1985)"
+    "answer": "Let It Be — The Beatles (1970)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "September — Earth, Wind & Fire (1978)"
+    "answer": "My Girl — The Temptations (1964)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "I Wanna Dance with Somebody (Who Loves Me) — Whitney Houston (1987)"
-  },  
+    "answer": "Dreams — Fleetwood Mac (1977)"
+  },
   {
     "url": "audio/song5.mp3",
-    "answer": "Disco Inferno — The Trammps (1976)"
-  },
-  {
-    "url": "audio/song6.mp3",
-    "answer": "Relax — Frankie Goes to Hollywood (1983)"
-  },
-  {
-    "url": "audio/song7.mp3",
-    "answer": "Le Freak — Chic (1978)"
-  },
-  {
-    "url": "audio/song8.mp3",
-    "answer": "We Are Family — Sister Sledge (1979)"
-  },
-  {
-    "url": "audio/song9.mp3",
-    "answer": "Y.M.C.A. — Village People (1978)"
-  },
-  {
-    "url": "audio/song10.mp3",
-    "answer": "Girls Just Want to Have Fun — Cyndi Lauper (1983)"
+    "answer": "Heart of Glass — Blondie (1979)"
   }
 ]
+
 
