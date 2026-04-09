@@ -1,24 +1,22 @@
 [
   {
     "url": "audio/song1.mp3",
-    "answer": "Respect — Aretha Franklin (1967)"
+    "answer": "American Pie — Don McLean (1971)"
   },
   {
     "url": "audio/song2.mp3",
-    "answer": "Let It Be — The Beatles (1970)"
+    "answer": "Rocket Man — Elton John (1972)"
   },
   {
     "url": "audio/song3.mp3",
-    "answer": "My Girl — The Temptations (1964)"
+    "answer": "Bridge over Troubled Water — Simon & Garfunkel (1970)"
   },
   {
     "url": "audio/song4.mp3",
-    "answer": "Dreams — Fleetwood Mac (1977)"
+    "answer": "Let’s Get It On — Marvin Gaye (1973)"
   },
   {
     "url": "audio/song5.mp3",
-    "answer": "Heart of Glass — Blondie (1979)"
+    "answer": "Waterloo — ABBA (1974)"
   }
 ]
-
-
