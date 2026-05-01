@@ -1,0 +1,22 @@
+[
+  {
+    "url": "audio/Song Quiz/song1.mp3",
+    "answer": "I’m Still Standing — Elton John (1983)"
+  },
+  {
+    "url": "audio/Song Quiz/song2.mp3",
+    "answer": "Girls Just Want to Have Fun — Cyndi Lauper (1983)"
+  },
+  {
+    "url": "audio/Song Quiz/song3.mp3",
+    "answer": "Walking on Sunshine — Katrina and the Waves (1985)"
+  },
+  {
+    "url": "audio/Song Quiz/song4.mp3",
+    "answer": "Faith — George Michael (1987)"
+  },
+  {
+    "url": "audio/Song Quiz/song5.mp3",
+    "answer": "Uptown Girl — Billy Joel (1983)"
+  }
+]
