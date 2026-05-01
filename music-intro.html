@@ -139,14 +139,14 @@
         <h1 style="margin-top:0;">Audio Quiz Setup</h1>
         <p>Step 1: Quiz Topic (e.g. 90s Pop Hits)</p>
         <input type="text" id="topicInput" placeholder="Enter topic here...">
-        <p>Step 2: Load quiz folders (each folder should contain songs + one TXT manifest)</p>
+        <p>Step 2: Load quiz folders (each folder should contain songs + one JSON manifest)</p>
         <button class="btn-primary" type="button" onclick="document.getElementById('folderInput').click()">Load Quiz Folder</button>
         <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
         <p id="folderCount" class="setup-help">No quiz folders loaded yet.</p>
         <select id="quizSelect">
             <option value="">Select a loaded quiz folder...</option>
         </select>
-        <p class="setup-help">TXT manifest format: one line per track as <b>path/to/file.mp3 | Answer</b>.</p>
+        <p class="setup-help">Manifest must be a JSON array with <b>url</b> and <b>answer</b> per item.</p>
         <p id="manifestWarning" class="manifest-warning" style="display:none;"></p>
         <br>
         <button class="btn-success" onclick="showCoverPage()">Generate Quiz</button>
@@ -226,58 +226,47 @@
             const fileMap = new Map();
             fileList.forEach((file) => fileMap.set(normalizePath(file.webkitRelativePath), file));
 
-            const txtFiles = fileList.filter((f) => f.name.toLowerCase().endsWith('.txt'));
-            if (txtFiles.length === 0) {
+            const jsonFiles = fileList.filter((f) => f.name.toLowerCase().endsWith('.json'));
+            if (jsonFiles.length === 0) {
                 warningEl.style.display = 'block';
-                warningEl.textContent = 'No TXT manifest found in selected folder.';
+                warningEl.textContent = 'No JSON manifest found in selected folder.';
                 return;
             }
 
-            for (const manifestFile of txtFiles) {
-                const manifestPath = normalizePath(manifestFile.webkitRelativePath);
-                const manifestDir = manifestPath.split('/').slice(0, -1).join('/');
-                const invalidEntries = [];
-                const lines = (await manifestFile.text()).split(/\r?\n/);
+            for (const manifestFile of jsonFiles) {
+                try {
+                    const data = JSON.parse(await manifestFile.text());
+                    if (!Array.isArray(data) || data.length === 0) continue;
 
-                const items = lines.map((rawLine, index) => {
-                    const line = rawLine.trim();
-                    if (!line || line.startsWith('#')) return null;
+                    const manifestPath = normalizePath(manifestFile.webkitRelativePath);
+                    const manifestDir = manifestPath.split('/').slice(0, -1).join('/');
+                    const invalidEntries = [];
+                    const items = data.map((item, index) => {
+                        if (!item || !item.url || !item.answer) {
+                            invalidEntries.push(index + 1);
+                            return null;
+                        }
+                        const targetPath = joinPath(manifestDir, item.url);
+                        const audioFile = fileMap.get(targetPath);
+                        if (!audioFile) {
+                            invalidEntries.push(index + 1);
+                            return null;
+                        }
+                        return { answer: item.answer, file: audioFile };
+                    }).filter(Boolean);
 
-                    const parts = line.split('|');
-                    if (parts.length < 2) {
-                        invalidEntries.push(index + 1);
-                        return null;
+                    if (items.length === 0) continue;
+
+                    const folderName = manifestDir.split('/').filter(Boolean).slice(-1)[0] || manifestDir || 'quiz-folder';
+                    quizSets.push({ id: `${folderName}-${quizSets.length}`, name: folderName, manifest: manifestFile.name, items });
+
+                    if (invalidEntries.length > 0) {
+                        warningEl.style.display = 'block';
+                        warningEl.textContent = `Some entries were skipped in ${manifestFile.name}: ${invalidEntries.join(', ')}`;
                     }
-
-                    const relativePath = parts[0].trim();
-                    const answer = parts.slice(1).join('|').trim();
-                    if (!relativePath || !answer) {
-                        invalidEntries.push(index + 1);
-                        return null;
-                    }
-
-                    const targetPath = joinPath(manifestDir, relativePath);
-                    const audioFile = fileMap.get(targetPath);
-                    if (!audioFile) {
-                        invalidEntries.push(index + 1);
-                        return null;
-                    }
-
-                    return { answer, file: audioFile };
-                }).filter(Boolean);
-
-                if (items.length === 0) {
+                } catch {
                     warningEl.style.display = 'block';
-                    warningEl.textContent = `No valid entries found in ${manifestFile.name}.`;
-                    continue;
-                }
-
-                const folderName = manifestDir.split('/').filter(Boolean).slice(-1)[0] || manifestDir || 'quiz-folder';
-                quizSets.push({ id: `${folderName}-${quizSets.length}`, name: folderName, manifest: manifestFile.name, items });
-
-                if (invalidEntries.length > 0) {
-                    warningEl.style.display = 'block';
-                    warningEl.textContent = `Some entries were skipped in ${manifestFile.name}: ${invalidEntries.join(', ')}`;
+                    warningEl.textContent = `Invalid JSON: ${manifestFile.name}`;
                 }
             }
 
